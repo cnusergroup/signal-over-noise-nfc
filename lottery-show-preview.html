@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Signal Over Noise — 粒子抽奖秀 (本地预览)</title>
+  <style>
+    :root {
+      --signal: #7df9ff;
+      --signal-2: #b98cff;
+      --muted: #8ea6bd;
+      --warn: #ff7eb3;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #050914; }
+    #lottery-canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; z-index: 1; }
+
+    #phase-badge {
+      position: fixed; top: 20px; left: 24px; z-index: 30;
+      padding: 6px 14px; font-family: "Share Tech Mono","Consolas",monospace; font-size: 13px;
+      letter-spacing: 0.1em; border-radius: 999px;
+      border: 1px solid rgba(185,140,255,0.55); background: rgba(7,16,34,0.7);
+      color: var(--signal-2); box-shadow: 0 0 16px rgba(185,140,255,0.25);
+    }
+    #status-indicator {
+      position: fixed; top: 20px; right: 24px; z-index: 30;
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 8px 16px; font-family: "Share Tech Mono","Consolas",monospace; font-size: 14px;
+      letter-spacing: 0.08em; border-radius: 999px;
+      border: 1px solid rgba(125,249,255,0.32); background: rgba(7,16,34,0.7);
+      color: var(--muted);
+    }
+    #status-indicator::before {
+      content: ""; width: 9px; height: 9px; border-radius: 50%;
+      background: currentColor; box-shadow: 0 0 8px currentColor;
+    }
+    #status-indicator.connected { color: var(--signal); border-color: rgba(125,249,255,0.55); }
+    #status-indicator.disconnected { color: var(--warn); border-color: rgba(255,126,179,0.5); }
+
+    #controls {
+      position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); z-index: 30;
+      display: flex; gap: 12px; align-items: center; padding: 10px 16px;
+      border-radius: 14px; border: 1px solid rgba(125,249,255,0.28);
+      background: rgba(7,16,34,0.78); backdrop-filter: blur(8px);
+      font-family: "Share Tech Mono","Consolas",monospace; font-size: 13px; color: var(--muted);
+    }
+    #controls button {
+      cursor: pointer; padding: 8px 16px; border-radius: 10px;
+      border: 1px solid rgba(125,249,255,0.5); background: rgba(125,249,255,0.08);
+      color: var(--signal); font-family: inherit; font-size: 13px; letter-spacing: 0.06em;
+      transition: background 0.18s ease, box-shadow 0.18s ease;
+    }
+    #controls button:hover { background: rgba(125,249,255,0.2); box-shadow: 0 0 14px rgba(125,249,255,0.3); }
+    #controls .count { color: var(--signal); }
+  </style>
+</head>
+<body>
+  <canvas id="lottery-canvas"></canvas>
+  <div id="phase-badge">● 粒子抽奖秀 (本地预览)</div>
+  <div id="status-indicator" class="disconnected">阶段: --</div>
+
+  <div id="controls">
+    <span>已抽奖 <span id="count" class="count">0</span> 次</span>
+    <button id="draw-btn" type="button">🎲 抽一个名字</button>
+  </div>
+
+  <script type="importmap">
+    { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+  </script>
+
+  <script type="module">
+    import { ParticleShow, Phase } from './web/lottery/particle-show.mjs';
+
+    // 一组演示用中奖者名字（含中文/英文/emoji）
+    const NAMES = [
+      '量子比特', '信号猎人', '云原生小王', 'Alice', '深度学习',
+      '边缘计算', '🚀 火箭少女', '香农', 'Bob', '反熵宇宙',
+      '噪声中的信号', 'Grace',
+    ];
+    let drawCount = 0;
+
+    const show = new ParticleShow({ canvas: document.getElementById('lottery-canvas') });
+
+    // 阶段指示
+    const statusEl = document.getElementById('status-indicator');
+    setInterval(() => {
+      const p = show.getPhase();
+      statusEl.textContent = '阶段: ' + (p === Phase.Intro ? 'A→W→S→UG' : p === Phase.Sphere ? '旋转大球' : '揭晓中奖');
+      statusEl.className = p === Phase.Intro ? 'disconnected' : 'connected';
+    }, 300);
+
+    // 抽奖按钮
+    document.getElementById('draw-btn').addEventListener('click', () => {
+      const name = NAMES[Math.floor(Math.random() * NAMES.length)];
+      show.showWinner(name);
+      drawCount += 1;
+      document.getElementById('count').textContent = String(drawCount);
+    });
+
+    // 便于在控制台手动测试
+    window.__show = show;
+  </script>
+</body>
+</html>

@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Signal Over Noise — After Party Lottery</title>
+  <style>
+    :root {
+      --bg: #0a1628;
+      --signal: #7df9ff;
+      --signal-2: #b98cff;
+      --aws: #ff9900;
+      --text: #e2e8f0;
+      --muted: #8ea6bd;
+      --warn: #ff7eb3;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; overflow: hidden; font-family: "Inter","PingFang SC","Microsoft YaHei",sans-serif; }
+    body {
+      background:
+        radial-gradient(1200px 800px at 50% -10%, rgba(125,249,255,.10), transparent 60%),
+        radial-gradient(900px 700px at 90% 110%, rgba(185,140,255,.10), transparent 55%),
+        var(--bg);
+      color: var(--text);
+    }
+
+    /* WebGL particle intro canvas (A/W/S/UG) */
+    #lottery-canvas {
+      position: fixed; inset: 0; width: 100%; height: 100%;
+      display: block; z-index: 10;
+      transition: opacity 1.2s ease;
+    }
+    #lottery-canvas.hidden { opacity: 0; pointer-events: none; }
+
+    /* Intro caption shown under the A/W/S/UG particles */
+    #intro-caption {
+      position: fixed; left: 0; right: 0; bottom: 16%; z-index: 12;
+      text-align: center; pointer-events: none;
+      font-family: "Share Tech Mono", monospace;
+      font-size: clamp(16px, 2.4vw, 30px); font-weight: 600;
+      letter-spacing: .5em; text-indent: .5em;
+      color: var(--signal);
+      text-shadow: 0 0 18px rgba(125,249,255,.6);
+      opacity: 0; transition: opacity .8s ease;
+    }
+    #intro-caption.visible { opacity: 1; animation: captionBlink 1.6s ease-in-out infinite; }
+    #intro-caption.hidden { opacity: 0; }
+    #intro-caption .dots::after {
+      content: ""; animation: captionDots 1.5s steps(4, end) infinite;
+    }
+    @keyframes captionBlink {
+      0%,100% { opacity: .55; }
+      50% { opacity: 1; }
+    }
+    @keyframes captionDots {
+      0% { content: ""; }
+      25% { content: "·"; }
+      50% { content: "··"; }
+      75% { content: "···"; }
+      100% { content: ""; }
+    }
+
+    /* CSS3D card sphere container */
+    #container {
+      position: fixed; inset: 0; z-index: 20;
+      opacity: 0; transition: opacity 1.2s ease;
+    }
+    #container.visible { opacity: 1; }
+
+    /* Headline */
+    #headline {
+      position: fixed; top: 22px; left: 0; right: 0; z-index: 90;
+      text-align: center; pointer-events: none;
+      opacity: 0; transition: opacity 1s ease;
+    }
+    #headline.visible { opacity: 1; }
+    #headline .title {
+      font-size: clamp(20px, 3vw, 34px); font-weight: 800; letter-spacing: .08em;
+      color: #fff; text-shadow: 0 0 18px rgba(125,249,255,.45);
+    }
+    #headline .subtitle {
+      margin-top: 4px; font-size: clamp(11px, 1.4vw, 15px); letter-spacing: .35em;
+      color: var(--signal); text-transform: uppercase; opacity: .85;
+      font-family: "Share Tech Mono", monospace;
+    }
+
+    /* Status indicator */
+    #status-indicator {
+      position: fixed; top: 16px; right: 20px; z-index: 100;
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 14px; font-size: 12px; letter-spacing: .06em;
+      font-family: "Share Tech Mono", monospace;
+      border-radius: 999px; border: 1px solid rgba(125,249,255,.3);
+      background: rgba(7,16,34,.75); backdrop-filter: blur(4px);
+      color: var(--muted); transition: color .2s, border-color .2s;
+    }
+    #status-indicator::before {
+      content: ""; width: 7px; height: 7px; border-radius: 50%;
+      background: currentColor; box-shadow: 0 0 6px currentColor;
+    }
+    #status-indicator.connected { color: var(--signal); border-color: rgba(125,249,255,.5); }
+    #status-indicator.disconnected { color: var(--warn); border-color: rgba(255,126,179,.4); }
+
+    /* Loading / empty message */
+    #message {
+      position: fixed; inset: 0; z-index: 80; display: none;
+      align-items: center; justify-content: center; flex-direction: column; gap: 16px;
+      font-size: 22px; color: var(--muted); text-align: center; padding: 24px;
+    }
+    #message.active { display: flex; }
+    #message .spinner {
+      width: 42px; height: 42px; border-radius: 50%;
+      border: 3px solid rgba(125,249,255,.25); border-top-color: var(--signal);
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Winner reveal overlay */
+    #winner-overlay {
+      display: none; position: fixed; inset: 0; z-index: 200;
+      align-items: center; justify-content: center; flex-direction: column; gap: 18px;
+      background: rgba(5,9,20,.82); backdrop-filter: blur(6px);
+    }
+    #winner-overlay.active { display: flex; }
+    #winner-avatar {
+      width: clamp(110px, 16vw, 190px); height: clamp(110px, 16vw, 190px);
+      border-radius: 50%; overflow: hidden;
+      border: 3px solid var(--signal);
+      box-shadow: 0 0 34px rgba(125,249,255,.6), inset 0 0 22px rgba(125,249,255,.25);
+      display: flex; align-items: center; justify-content: center;
+      background: linear-gradient(135deg, #2dd4bf, #7c3aed);
+      animation: winnerPulse 2s ease-in-out infinite;
+    }
+    #winner-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    #winner-label {
+      font-size: clamp(14px, 2vw, 20px); letter-spacing: .4em; text-transform: uppercase;
+      color: var(--signal); font-family: "Share Tech Mono", monospace;
+    }
+    #winner-name {
+      font-size: clamp(44px, 7.5vw, 104px); font-weight: 800;
+      color: #fff; text-shadow: 0 0 30px rgba(125,249,255,.7), 0 0 60px rgba(125,249,255,.35);
+      text-align: center; padding: 0 20px;
+    }
+    @keyframes winnerPulse {
+      0%,100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+
+    /* Card styling (each participant) */
+    .card {
+      width: 120px; height: 150px;
+      border-radius: 14px; border: 1px solid rgba(125,249,255,.22);
+      background: linear-gradient(160deg, rgba(0,90,96,.62), rgba(10,30,55,.62));
+      box-shadow: inset 0 0 18px rgba(125,249,255,.08);
+      backdrop-filter: blur(2px);
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: 10px; padding: 10px;
+      transition: border-color .3s, box-shadow .3s, transform .3s, opacity .3s;
+      cursor: default;
+    }
+    .card .avatar {
+      width: 62px; height: 62px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden;
+      border: 2px solid rgba(125,249,255,.4);
+      box-shadow: 0 4px 14px rgba(0,0,0,.35);
+    }
+    .card .avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .card .name {
+      font-size: 13px; text-align: center; color: rgba(255,255,255,.92);
+      line-height: 1.3; max-width: 100%; overflow: hidden;
+      text-overflow: ellipsis; white-space: nowrap;
+    }
+
+    /* AWS service filler card */
+    .card.aws {
+      border-color: rgba(255,153,0,.28);
+      background: linear-gradient(160deg, rgba(35,47,62,.66), rgba(18,26,40,.66));
+      box-shadow: inset 0 0 18px rgba(255,153,0,.06);
+    }
+    .card.aws .avatar {
+      border-radius: 14px;
+      border-color: rgba(255,153,0,.45);
+      background: rgba(255,255,255,.06);
+      padding: 6px;
+    }
+    .card.aws .avatar img { object-fit: contain; }
+    .card.aws .name { color: rgba(255,200,120,.92); font-size: 11px; }
+
+    .card.dim { opacity: .18; }
+    .card.winner {
+      border-color: var(--signal) !important;
+      box-shadow: 0 0 26px rgba(125,249,255,.65), inset 0 0 22px rgba(125,249,255,.25) !important;
+      transform: scale(1.14);
+      opacity: 1 !important;
+    }
+  </style>
+</head>
+<body>
+  <!-- WebGL particle intro (A → W → S → UG) -->
+  <canvas id="lottery-canvas"></canvas>
+  <div id="intro-caption">信号连接中<span class="dots"></span></div>
+  <!-- CSS3D card sphere (participants + AWS services) -->
+  <div id="container"></div>
+
+  <div id="headline">
+    <div class="title">SIGNAL OVER NOISE</div>
+    <div class="subtitle">After Party Lottery</div>
+  </div>
+  <div id="status-indicator" class="disconnected">未连接</div>
+  <div id="message"><div class="spinner"></div><div id="message-text">正在加载参与者…</div></div>
+  <div id="winner-overlay">
+    <div id="winner-avatar"><img id="winner-avatar-img" alt="" /></div>
+    <div id="winner-label">Winner</div>
+    <div id="winner-name"></div>
+  </div>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { CSS3DRenderer, CSS3DObject } from 'three/addons/renderers/CSS3DRenderer.js';
+    import * as TWEEN from 'three/addons/libs/tween.module.js';
+    import { ParticleShow } from './web/lottery/particle-show.mjs';
+
+    const API_BASE = 'https://7orrwwprye.execute-api.ap-northeast-1.amazonaws.com';
+    const SPHERE_RADIUS = 900;
+    const POLL_INTERVAL = 3000;
+    const REVEAL_HOLD = 6000;
+    // Fill the sphere up to this many cards using AWS service icons when there
+    // aren't enough participants, so the sphere always looks full / packed.
+    const MIN_CARDS = 140;
+
+    // Rotation speeds (radians/frame).
+    const BASE_SPIN = 0.0022;   // idle spin
+    const MAX_SPIN = 0.13;      // peak spin during pre-reveal build-up
+
+    // DiceBear cartoon (robot) avatar — deterministic by seed (nickname).
+    const AVATAR_BG = ['2dd4bf','7c3aed','60a5fa','f472b6','fbbf24','f97316','a78bfa','34d399','3b82f6'];
+    function avatarUrl(nickname, i) {
+      const seed = encodeURIComponent(nickname || ('guest' + i));
+      const bg = AVATAR_BG[Math.abs(hashStr(nickname || ('g' + i))) % AVATAR_BG.length];
+      return `https://api.dicebear.com/9.x/bottts/svg?seed=${seed}&backgroundColor=${bg}&radius=50`;
+    }
+    function hashStr(s) {
+      let h = 0;
+      for (let i = 0; i < s.length; i++) { h = (h * 31 + s.charCodeAt(i)) | 0; }
+      return h;
+    }
+
+    // AWS services used to fill empty sphere slots. Icons from icepanel CDN.
+    const AWS_ICON_BASE = 'https://icon.icepanel.io/AWS/svg/';
+    const AWS_SERVICES = [
+      ['Compute/Lambda.svg', 'AWS Lambda'],
+      ['Compute/EC2.svg', 'Amazon EC2'],
+      ['Compute/Fargate.svg', 'AWS Fargate'],
+      ['Compute/Elastic-Beanstalk.svg', 'Elastic Beanstalk'],
+      ['Compute/Batch.svg', 'AWS Batch'],
+      ['Compute/Lightsail.svg', 'Amazon Lightsail'],
+      ['Compute/App-Runner.svg', 'AWS App Runner'],
+      ['Storage/Simple-Storage-Service.svg', 'Amazon S3'],
+      ['Storage/Elastic-Block-Store.svg', 'Amazon EBS'],
+      ['Storage/Backup.svg', 'AWS Backup'],
+      ['Storage/Simple-Storage-Service-Glacier.svg', 'S3 Glacier'],
+      ['Database/DynamoDB.svg', 'Amazon DynamoDB'],
+      ['Database/Aurora.svg', 'Amazon Aurora'],
+      ['Database/RDS.svg', 'Amazon RDS'],
+      ['Database/ElastiCache.svg', 'Amazon ElastiCache'],
+      ['Database/Neptune.svg', 'Amazon Neptune'],
+      ['Database/DocumentDB.svg', 'Amazon DocumentDB'],
+      ['Database/MemoryDB-for-Redis.svg', 'Amazon MemoryDB'],
+      ['Database/Timestream.svg', 'Amazon Timestream'],
+      ['Machine-Learning/SageMaker.svg', 'Amazon SageMaker'],
+      ['Machine-Learning/Comprehend.svg', 'Amazon Comprehend'],
+      ['Machine-Learning/Rekognition.svg', 'Amazon Rekognition'],
+      ['Machine-Learning/Polly.svg', 'Amazon Polly'],
+      ['Machine-Learning/Translate.svg', 'Amazon Translate'],
+      ['Machine-Learning/Lex.svg', 'Amazon Lex'],
+      ['Machine-Learning/Textract.svg', 'Amazon Textract'],
+      ['Machine-Learning/Forecast.svg', 'Amazon Forecast'],
+      ['Machine-Learning/Kendra.svg', 'Amazon Kendra'],
+      ['Analytics/Athena.svg', 'Amazon Athena'],
+      ['Analytics/Kinesis.svg', 'Amazon Kinesis'],
+      ['Analytics/Redshift.svg', 'Amazon Redshift'],
+      ['Analytics/Glue.svg', 'AWS Glue'],
+      ['Analytics/QuickSight.svg', 'Amazon QuickSight'],
+      ['Analytics/EMR.svg', 'Amazon EMR'],
+      ['Analytics/Data-Pipeline.svg', 'AWS Data Pipeline'],
+      ['Analytics/Lake-Formation.svg', 'AWS Lake Formation'],
+      ['Analytics/OpenSearch-Service.svg', 'Amazon OpenSearch'],
+      ['Analytics/Managed-Streaming-for-Apache-Kafka.svg', 'Amazon MSK'],
+      ['Analytics/CloudSearch.svg', 'Amazon CloudSearch'],
+      ['Networking-Content-Delivery/CloudFront.svg', 'Amazon CloudFront'],
+      ['Networking-Content-Delivery/Virtual-Private-Cloud.svg', 'Amazon VPC'],
+      ['Networking-Content-Delivery/Route-53.svg', 'Amazon Route 53'],
+      ['Networking-Content-Delivery/Elastic-Load-Balancing.svg', 'Elastic Load Balancing'],
+      ['Networking-Content-Delivery/Direct-Connect.svg', 'AWS Direct Connect'],
+      ['Networking-Content-Delivery/Global-Accelerator.svg', 'Global Accelerator'],
+      ['Containers/Elastic-Container-Service.svg', 'Amazon ECS'],
+      ['Containers/Elastic-Kubernetes-Service.svg', 'Amazon EKS'],
+      ['Containers/Elastic-Container-Registry.svg', 'Amazon ECR'],
+      ['Management-Governance/CloudWatch.svg', 'Amazon CloudWatch'],
+      ['Management-Governance/CloudFormation.svg', 'AWS CloudFormation'],
+      ['Management-Governance/Systems-Manager.svg', 'AWS Systems Manager'],
+      ['Management-Governance/CloudTrail.svg', 'AWS CloudTrail'],
+      ['Management-Governance/Config.svg', 'AWS Config'],
+      ['Management-Governance/Organizations.svg', 'AWS Organizations'],
+      ['App-Integration/Step-Functions.svg', 'AWS Step Functions'],
+      ['App-Integration/Simple-Notification-Service.svg', 'Amazon SNS'],
+      ['App-Integration/Simple-Queue-Service.svg', 'Amazon SQS'],
+      ['App-Integration/EventBridge.svg', 'Amazon EventBridge'],
+      ['App-Integration/AppFlow.svg', 'Amazon AppFlow'],
+      ['App-Integration/Managed-Workflows-for-Apache-Airflow.svg', 'Amazon MWAA'],
+      ['Security-Identity-Compliance/Cognito.svg', 'Amazon Cognito'],
+      ['Security-Identity-Compliance/Identity-and-Access-Management.svg', 'AWS IAM'],
+      ['Security-Identity-Compliance/Key-Management-Service.svg', 'AWS KMS'],
+      ['Security-Identity-Compliance/Secrets-Manager.svg', 'AWS Secrets Manager'],
+      ['Security-Identity-Compliance/WAF.svg', 'AWS WAF'],
+      ['Security-Identity-Compliance/Shield.svg', 'AWS Shield'],
+      ['Security-Identity-Compliance/GuardDuty.svg', 'Amazon GuardDuty'],
+      ['Developer-Tools/CodePipeline.svg', 'AWS CodePipeline'],
+      ['Developer-Tools/CodeBuild.svg', 'AWS CodeBuild'],
+      ['Developer-Tools/CodeCommit.svg', 'AWS CodeCommit'],
+      ['Developer-Tools/Cloud9.svg', 'AWS Cloud9'],
+      ['Developer-Tools/X-Ray.svg', 'AWS X-Ray'],
+      ['Front-End-Web-Mobile/Amplify.svg', 'AWS Amplify'],
+      ['Front-End-Web-Mobile/Device-Farm.svg', 'AWS Device Farm'],
+      ['Media-Services/Elemental-MediaConvert.svg', 'AWS Elemental MediaConvert'],
+      ['Internet-of-Things/IoT-Core.svg', 'AWS IoT Core'],
+    ];
+
+    let camera, scene, renderer;
+    let objects = [];
+    let sphereTargets = [];
+    let tableTargets = [];
+    let autoRotate = false;
+    let spin = BASE_SPIN;          // current rotation speed (animated)
+    let knownDrawSeq = 0;
+    let failureStreak = 0;
+    let particleShow = null;
+    let cardSphereStarted = false;
+    let revealing = false;         // guard so polls don't overlap reveals
+
+    function showMessage(text) {
+      const m = document.getElementById('message');
+      document.getElementById('message-text').textContent = text;
+      m.classList.add('active');
+    }
+    function hideMessage() { document.getElementById('message').classList.remove('active'); }
+
+    function shuffle(arr) {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    // Build the combined deck: real participants + AWS filler cards.
+    function buildDeck(participants) {
+      const deck = participants.map((p, i) => ({
+        type: 'participant',
+        nickname: p.nickname,
+        avatar: avatarUrl(p.nickname, i),
+        label: p.nickname,
+      }));
+
+      const need = Math.max(0, MIN_CARDS - deck.length);
+      if (need > 0) {
+        const pool = shuffle(AWS_SERVICES.slice());
+        for (let i = 0; i < need; i++) {
+          const svc = pool[i % pool.length];
+          deck.push({
+            type: 'aws',
+            nickname: null,
+            avatar: AWS_ICON_BASE + svc[0],
+            // Remove the "AWS" keyword from displayed service names per request
+            // (e.g. "AWS Lambda" -> "Lambda"). "Amazon ..." names are unaffected.
+            label: svc[1].replace(/\bAWS\s+/g, '').trim(),
+          });
+        }
+      }
+      return shuffle(deck);
+    }
+
+    function createCardElement(card) {
+      const el = document.createElement('div');
+      el.className = 'card' + (card.type === 'aws' ? ' aws' : '');
+      if (card.nickname) el.dataset.nickname = card.nickname;
+
+      const avatar = document.createElement('div');
+      avatar.className = 'avatar';
+      const img = document.createElement('img');
+      img.src = card.avatar;
+      img.alt = card.label;
+      img.loading = 'lazy';
+      avatar.appendChild(img);
+      el.appendChild(avatar);
+
+      const name = document.createElement('div');
+      name.className = 'name';
+      name.textContent = card.label;
+      el.appendChild(name);
+
+      return el;
+    }
+
+    // ---- bootstrap: load participants, then play particle intro ----
+    async function boot() {
+      let participants = [];
+      try {
+        const res = await fetch(API_BASE + '/lottery/participants');
+        const data = await res.json();
+        participants = data.participants || [];
+      } catch (e) {
+        console.error('Failed to load participants:', e);
+      }
+      startParticleIntro(participants);
+    }
+
+    function startParticleIntro(participants) {
+      const canvas = document.getElementById('lottery-canvas');
+      // Show the "信号连接中" caption under the A/W/S/UG particles.
+      const caption = document.getElementById('intro-caption');
+      setTimeout(() => caption.classList.add('visible'), 400);
+      try {
+        particleShow = new ParticleShow({
+          canvas,
+          count: 6000,
+          letterHoldMs: 1600,
+          morphMs: 1400,
+          onIntroComplete() {
+            // A/W/S/UG finished and particles converged into the sphere.
+            // Hold briefly, then cross-fade into the CSS3D card sphere.
+            setTimeout(() => transitionToCardSphere(participants), 1800);
+          },
+        });
+      } catch (e) {
+        console.error('ParticleShow failed, skipping intro:', e);
+        transitionToCardSphere(participants);
+      }
+    }
+
+    function transitionToCardSphere(participants) {
+      if (cardSphereStarted) return;
+      cardSphereStarted = true;
+
+      hideMessage();
+      buildCardSphere(participants);
+
+      const canvas = document.getElementById('lottery-canvas');
+      const container = document.getElementById('container');
+      const headline = document.getElementById('headline');
+      const caption = document.getElementById('intro-caption');
+      caption.classList.remove('visible');
+      caption.classList.add('hidden');
+      container.classList.add('visible');
+      headline.classList.add('visible');
+      canvas.classList.add('hidden');
+
+      setTimeout(() => {
+        if (particleShow) { try { particleShow.dispose(); } catch (e) {} particleShow = null; }
+      }, 1400);
+    }
+
+    function buildCardSphere(participants) {
+      const deck = buildDeck(participants);
+
+      camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 1, 10000);
+      camera.position.z = 3000;
+      scene = new THREE.Scene();
+
+      const colCount = Math.ceil(Math.sqrt(deck.length * 1.6));
+      const rowCount = Math.ceil(deck.length / colCount);
+
+      for (let i = 0; i < deck.length; i++) {
+        const el = createCardElement(deck[i]);
+
+        const obj = new CSS3DObject(el);
+        obj.position.x = Math.random() * 4000 - 2000;
+        obj.position.y = Math.random() * 4000 - 2000;
+        obj.position.z = Math.random() * 4000 - 2000;
+        scene.add(obj);
+        objects.push(obj);
+
+        // Table (matrix) target
+        const tableObj = new THREE.Object3D();
+        const col = i % colCount;
+        const row = Math.floor(i / colCount);
+        tableObj.position.x = (col - (colCount - 1) / 2) * 140;
+        tableObj.position.y = -(row - (rowCount - 1) / 2) * 175;
+        tableObj.position.z = 0;
+        tableTargets.push(tableObj);
+
+        // Sphere target
+        const phi = Math.acos(-1 + (2 * i) / deck.length);
+        const theta = Math.sqrt(deck.length * Math.PI) * phi;
+        const sphereObj = new THREE.Object3D();
+        sphereObj.position.setFromSphericalCoords(SPHERE_RADIUS, phi, theta);
+        const vec = sphereObj.position.clone().multiplyScalar(2);
+        sphereObj.lookAt(vec);
+        sphereTargets.push(sphereObj);
+      }
+
+      renderer = new CSS3DRenderer();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      document.getElementById('container').appendChild(renderer.domElement);
+
+      // Flow: scatter -> matrix -> hold -> sphere -> rotate + poll
+      morphTo(tableTargets, 2000, function () {
+        setTimeout(function () {
+          morphTo(sphereTargets, 2000, function () {
+            autoRotate = true;
+            startPolling();
+          });
+        }, 2500);
+      });
+
+      window.addEventListener('resize', onResize);
+      animate();
+    }
+
+    function morphTo(targets, duration, onComplete) {
+      TWEEN.removeAll();
+      for (let i = 0; i < objects.length; i++) {
+        const obj = objects[i];
+        const target = targets[i];
+        new TWEEN.Tween(obj.position)
+          .to({ x: target.position.x, y: target.position.y, z: target.position.z }, duration + Math.random() * duration * 0.3)
+          .easing(TWEEN.Easing.Exponential.InOut)
+          .start();
+        new TWEEN.Tween(obj.rotation)
+          .to({ x: target.rotation.x, y: target.rotation.y, z: target.rotation.z }, duration + Math.random() * duration * 0.3)
+          .easing(TWEEN.Easing.Exponential.InOut)
+          .start();
+      }
+      if (onComplete) {
+        new TWEEN.Tween({}).to({}, duration * 1.35).onComplete(onComplete).start();
+      }
+    }
+
+    let lastFrameMs = 0;
+    function animate(nowMs) {
+      requestAnimationFrame(animate);
+      // Delta-time normalized to a 60fps baseline so a long frame (e.g. when
+      // the 3s winners poll resolves) advances rotation proportionally instead
+      // of dropping a fixed step — eliminates the periodic stutter.
+      if (!lastFrameMs) lastFrameMs = nowMs || 0;
+      let dtScale = nowMs ? (nowMs - lastFrameMs) / 16.6667 : 1;
+      lastFrameMs = nowMs || lastFrameMs;
+      // Clamp so a very long pause (tab backgrounded) can't cause a huge jump.
+      if (!(dtScale > 0)) dtScale = 1;
+      if (dtScale > 4) dtScale = 4;
+
+      TWEEN.update();
+      if (autoRotate && scene) scene.rotation.y += spin * dtScale;
+      if (renderer && scene && camera) renderer.render(scene, camera);
+    }
+
+    function onResize() {
+      if (!camera || !renderer) return;
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    // --- Winner reveal: spin-up build-up, then reveal ---
+    function revealWinner(nickname) {
+      revealing = true;
+      autoRotate = true; // ensure spinning during build-up
+
+      // Phase 1: accelerate the sphere (suspense build-up).
+      const spinState = { v: BASE_SPIN };
+      new TWEEN.Tween(spinState)
+        .to({ v: MAX_SPIN }, 700)
+        .easing(TWEEN.Easing.Cubic.In)
+        .onUpdate(() => { spin = spinState.v; })
+        .onComplete(() => {
+          // Phase 2: hold at full speed for ~3 seconds.
+          new TWEEN.Tween(spinState)
+            .to({ v: MAX_SPIN }, 3000)
+            .onUpdate(() => { spin = spinState.v; })
+            .onComplete(() => {
+              // Phase 3: decelerate quickly and snap to the reveal.
+              new TWEEN.Tween(spinState)
+                .to({ v: BASE_SPIN }, 500)
+                .easing(TWEEN.Easing.Cubic.Out)
+                .onUpdate(() => { spin = spinState.v; })
+                .onComplete(() => { doReveal(nickname); })
+                .start();
+            })
+            .start();
+        })
+        .start();
+    }
+
+    function doReveal(nickname) {
+      autoRotate = false;
+      spin = BASE_SPIN;
+
+      objects.forEach(obj => {
+        const el = obj.element;
+        if (el.dataset.nickname === nickname) {
+          el.classList.add('winner');
+          el.classList.remove('dim');
+        } else {
+          el.classList.add('dim');
+        }
+      });
+
+      const overlay = document.getElementById('winner-overlay');
+      document.getElementById('winner-name').textContent = nickname;
+      document.getElementById('winner-avatar-img').src = avatarUrl(nickname, 0);
+      overlay.classList.add('active');
+
+      setTimeout(function () {
+        overlay.classList.remove('active');
+        objects.forEach(obj => {
+          obj.element.classList.remove('winner');
+          obj.element.classList.remove('dim');
+        });
+        autoRotate = true;
+        revealing = false;
+      }, REVEAL_HOLD);
+    }
+
+    // --- Polling ---
+    let pendingWinners = [];
+    function startPolling() { pollWinners(); }
+
+    async function pollWinners() {
+      const statusEl = document.getElementById('status-indicator');
+      try {
+        const res = await fetch(API_BASE + '/lottery/winners');
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const body = await res.json();
+        failureStreak = 0;
+        statusEl.className = 'connected';
+        statusEl.textContent = '已连接';
+
+        const fresh = (body.winners || []).filter(w => (w.drawSeq || 0) > knownDrawSeq);
+        fresh.sort((a, b) => (a.drawSeq || 0) - (b.drawSeq || 0));
+        for (const w of fresh) {
+          pendingWinners.push(w);
+          knownDrawSeq = w.drawSeq || knownDrawSeq;
+        }
+        drainWinners();
+      } catch (e) {
+        failureStreak++;
+        if (failureStreak >= 3) {
+          statusEl.className = 'disconnected';
+          statusEl.textContent = '未连接';
+        }
+      }
+      setTimeout(pollWinners, failureStreak >= 3 ? 5000 : POLL_INTERVAL);
+    }
+
+    // Reveal winners one at a time (build-up + hold) so they don't overlap.
+    function drainWinners() {
+      if (revealing || pendingWinners.length === 0) return;
+      const w = pendingWinners.shift();
+      const onDone = () => {
+        // After the reveal+hold completes, pick up the next queued winner.
+        const timer = setInterval(() => {
+          if (!revealing) { clearInterval(timer); drainWinners(); }
+        }, 300);
+      };
+      revealWinner(w.nickname);
+      onDone();
+    }
+
+    boot();
+  </script>
+</body>
+</html>

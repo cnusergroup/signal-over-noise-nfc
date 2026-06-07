@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SIGNAL HUNT — 展商控制台</title>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+  <script src="https://unpkg.com/amazon-cognito-identity-js@6/dist/amazon-cognito-identity.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #050914;
+      --panel: rgba(13, 25, 50, 0.7);
+      --panel-border: rgba(125, 249, 255, 0.12);
+      --line: rgba(125, 249, 255, 0.08);
+      --signal: #7df9ff;
+      --signal-2: #a78bfa;
+      --signal-3: #34d399;
+      --signal-4: #f472b6;
+      --signal-5: #fbbf24;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --danger: #f87171;
+      --success: #34d399;
+      --glow: 0 0 20px rgba(125, 249, 255, 0.15);
+      --glow-strong: 0 0 30px rgba(125, 249, 255, 0.3);
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse at 20% 50%, rgba(125, 249, 255, 0.03) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 20%, rgba(167, 139, 250, 0.03) 0%, transparent 50%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    #app { position: relative; z-index: 1; }
+
+    /* ===== LOGIN VIEW ===== */
+    #login-view {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 1rem;
+    }
+
+    .login-card {
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: 16px;
+      padding: 2.5rem;
+      width: 100%;
+      max-width: 400px;
+      backdrop-filter: blur(20px);
+      box-shadow: var(--glow);
+    }
+
+    .login-card h1 {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 1.5rem;
+      color: var(--signal);
+      text-align: center;
+      margin-bottom: 0.5rem;
+      text-shadow: 0 0 10px rgba(125, 249, 255, 0.4);
+    }
+
+    .login-card .subtitle {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.85rem;
+      margin-bottom: 2rem;
+    }
+
+    .form-group { margin-bottom: 1.25rem; }
+
+    .form-group label {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      margin-bottom: 0.4rem;
+    }
+
+    input {
+      width: 100%;
+      padding: 0.7rem 1rem;
+      background: rgba(5, 9, 20, 0.6);
+      border: 1px solid var(--panel-border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: 0.9rem;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: var(--signal);
+      box-shadow: 0 0 0 3px rgba(125, 249, 255, 0.1);
+    }
+
+    input::placeholder { color: var(--muted); }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.6rem 1.2rem;
+      border: none;
+      border-radius: 8px;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, rgba(125, 249, 255, 0.2), rgba(125, 249, 255, 0.1));
+      border: 1px solid var(--signal);
+      color: var(--signal);
+    }
+
+    .btn-primary:hover {
+      background: linear-gradient(135deg, rgba(125, 249, 255, 0.3), rgba(125, 249, 255, 0.15));
+      box-shadow: var(--glow);
+    }
+
+    .btn-ghost {
+      background: transparent;
+      border: 1px solid var(--panel-border);
+      color: var(--muted);
+    }
+
+    .btn-ghost:hover { border-color: var(--signal); color: var(--signal); }
+
+    .btn-full { width: 100%; justify-content: center; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .error-msg {
+      color: var(--danger);
+      font-size: 0.8rem;
+      margin-bottom: 1rem;
+      padding: 0.5rem 0.75rem;
+      background: rgba(248, 113, 113, 0.08);
+      border-radius: 6px;
+      border: 1px solid rgba(248, 113, 113, 0.2);
+    }
+
+    .newpass-info {
+      color: var(--signal);
+      font-size: 0.85rem;
+      margin-bottom: 1.5rem;
+      padding: 0.75rem;
+      background: rgba(125, 249, 255, 0.05);
+      border-radius: 8px;
+      border: 1px solid rgba(125, 249, 255, 0.15);
+    }
+
+    /* ===== TOP BAR ===== */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 1.5rem;
+      background: var(--panel);
+      border-bottom: 1px solid var(--panel-border);
+      backdrop-filter: blur(20px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .topbar-left { display: flex; align-items: center; gap: 0.75rem; }
+
+    .topbar-title {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 1.1rem;
+      color: var(--signal);
+      text-shadow: 0 0 10px rgba(125, 249, 255, 0.4);
+    }
+
+    .topbar-badge {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.65rem;
+      padding: 0.2rem 0.5rem;
+      background: rgba(167, 139, 250, 0.15);
+      border: 1px solid rgba(167, 139, 250, 0.3);
+      border-radius: 4px;
+      color: var(--signal-2);
+      letter-spacing: 0.1em;
+    }
+
+    .topbar-right { display: flex; align-items: center; gap: 1rem; }
+
+    /* ===== MAIN CONTENT ===== */
+    .main-content {
+      padding: 1.5rem;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    /* ===== PANELS ===== */
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1.25rem;
+      backdrop-filter: blur(10px);
+    }
+
+    .panel-header {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.9rem;
+      color: var(--signal);
+      margin-bottom: 1rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .stat-value {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 2rem;
+      color: var(--signal);
+      text-shadow: 0 0 15px rgba(125, 249, 255, 0.3);
+    }
+
+    .stat-label {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 0.25rem;
+    }
+
+    .checkin-list {
+      list-style: none;
+      margin-top: 1rem;
+    }
+
+    .checkin-list li {
+      padding: 0.5rem 0;
+      border-bottom: 1px solid var(--line);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--text);
+    }
+
+    .checkin-list li:last-child { border-bottom: none; }
+
+    .auto-refresh-note {
+      font-size: 0.7rem;
+      color: var(--muted);
+      margin-top: 0.75rem;
+      font-style: italic;
+    }
+
+    /* ===== CHECKIN FORM ===== */
+    .checkin-form {
+      display: flex;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+
+    .checkin-form input { flex: 1; }
+
+    .checkin-result {
+      padding: 0.6rem 0.75rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      display: none;
+    }
+
+    .checkin-result.success {
+      display: block;
+      background: rgba(52, 211, 153, 0.1);
+      border: 1px solid rgba(52, 211, 153, 0.3);
+      color: var(--success);
+    }
+
+    .checkin-result.cooldown {
+      display: block;
+      background: rgba(251, 191, 36, 0.1);
+      border: 1px solid rgba(251, 191, 36, 0.3);
+      color: var(--signal-5);
+    }
+
+    .checkin-result.error {
+      display: block;
+      background: rgba(248, 113, 113, 0.08);
+      border: 1px solid rgba(248, 113, 113, 0.2);
+      color: var(--danger);
+    }
+
+    /* ===== LOADING ===== */
+    .loading-indicator {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+      padding: 2rem;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    .spinner {
+      width: 20px;
+      height: 20px;
+      border: 2px solid var(--panel-border);
+      border-top-color: var(--signal);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .toast {
+      position: fixed;
+      bottom: 1.5rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      z-index: 9999;
+      transition: transform 0.3s ease;
+      pointer-events: none;
+    }
+
+    .toast.show { transform: translateX(-50%) translateY(0); }
+    .toast.success { background: rgba(52, 211, 153, 0.9); color: #050914; }
+    .toast.error { background: rgba(248, 113, 113, 0.9); color: #050914; }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 768px) {
+      .topbar { flex-direction: column; gap: 0.75rem; align-items: flex-start; }
+      .topbar-right { width: 100%; justify-content: flex-end; }
+      .main-content { padding: 1rem; }
+      .checkin-form { flex-direction: column; }
+    }
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--panel-border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--signal); }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <!-- LOGIN VIEW -->
+    <div id="login-view">
+      <div class="login-card">
+        <h1>SIGNAL HUNT</h1>
+        <p class="subtitle">展商控制台</p>
+        <div id="login-form">
+          <div class="form-group">
+            <label for="login-email">邮箱</label>
+            <input type="email" id="login-email" placeholder="exhibitor@example.com" autocomplete="email" />
+          </div>
+          <div class="form-group">
+            <label for="login-password">密码</label>
+            <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password" />
+          </div>
+          <div id="login-error" class="error-msg" style="display:none"></div>
+          <button id="login-btn" class="btn btn-primary btn-full" onclick="handleLogin()">登录</button>
+        </div>
+        <div id="newpass-form" style="display:none">
+          <p class="newpass-info">需要设置新密码。请设置您的永久密码。</p>
+          <div class="form-group">
+            <label for="new-password">新密码</label>
+            <input type="password" id="new-password" placeholder="新密码" autocomplete="new-password" />
+          </div>
+          <div class="form-group">
+            <label for="confirm-password">确认密码</label>
+            <input type="password" id="confirm-password" placeholder="确认密码" autocomplete="new-password" />
+          </div>
+          <div id="newpass-error" class="error-msg" style="display:none"></div>
+          <button id="newpass-btn" class="btn btn-primary btn-full" onclick="handleNewPassword()">设置密码</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- DASHBOARD VIEW -->
+    <div id="dashboard-view" style="display:none">
+      <header class="topbar">
+        <div class="topbar-left">
+          <h1 class="topbar-title" id="station-title">SIGNAL HUNT</h1>
+          <span class="topbar-badge">展商</span>
+        </div>
+        <div class="topbar-right">
+          <button class="btn btn-ghost" onclick="handleLogout()">退出</button>
+        </div>
+      </header>
+
+      <main class="main-content">
+        <!-- Station Stats Panel -->
+        <div class="panel">
+          <div class="panel-header">站点统计</div>
+          <div id="stats-content">
+            <div class="loading-indicator"><div class="spinner"></div><span>加载中...</span></div>
+          </div>
+        </div>
+
+        <!-- Manual Check-in Panel -->
+        <div class="panel">
+          <div class="panel-header">手动打卡 (Plan B)</div>
+          <div class="checkin-form">
+            <input type="text" id="checkin-tag-input" placeholder="输入 Tag ID..." />
+            <button class="btn btn-primary" onclick="doManualCheckin()">确认打卡</button>
+          </div>
+          <div id="checkin-result" class="checkin-result"></div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast"></div>
+
+  <script>
+  // ===== CONFIGURATION =====
+  const CONFIG = {
+    REGION: 'ap-northeast-1',
+    USER_POOL_ID: 'ap-northeast-1_dBdKduSNI',
+    CLIENT_ID: '43gokealbmen6doviustcfh62c',
+    API_BASE: 'https://7orrwwprye.execute-api.ap-northeast-1.amazonaws.com'
+  };
+
+  // ===== STATE =====
+  let currentSession = { idToken: null, accessToken: null, refreshToken: null };
+  let cognitoUser = null;
+  let userPool = null;
+  let stationId = null;
+  let refreshInterval = null;
+
+  // ===== INITIALIZATION =====
+  function initCognito() {
+    const poolData = { UserPoolId: CONFIG.USER_POOL_ID, ClientId: CONFIG.CLIENT_ID };
+    userPool = new AmazonCognitoIdentity.CognitoUserPool(poolData);
+
+    const currentUser = userPool.getCurrentUser();
+    if (currentUser) {
+      currentUser.getSession((err, session) => {
+        if (!err && session && session.isValid()) {
+          cognitoUser = currentUser;
+          currentSession.idToken = session.getIdToken().getJwtToken();
+          currentSession.accessToken = session.getAccessToken().getJwtToken();
+          currentSession.refreshToken = session.getRefreshToken();
+          onLoginSuccess();
+        }
+      });
+    }
+  }
+
+  // ===== AUTHENTICATION =====
+  function handleLogin() {
+    const email = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+    const errorEl = document.getElementById('login-error');
+    const btn = document.getElementById('login-btn');
+
+    if (!email || !password) {
+      showError(errorEl, '请输入邮箱和密码。');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = '登录中...';
+    errorEl.style.display = 'none';
+
+    const authDetails = new AmazonCognitoIdentity.AuthenticationDetails({
+      Username: email, Password: password
+    });
+    const userData = { Username: email, Pool: userPool };
+    cognitoUser = new AmazonCognitoIdentity.CognitoUser(userData);
+
+    cognitoUser.authenticateUser(authDetails, {
+      onSuccess(session) {
+        currentSession.idToken = session.getIdToken().getJwtToken();
+        currentSession.accessToken = session.getAccessToken().getJwtToken();
+        currentSession.refreshToken = session.getRefreshToken();
+        onLoginSuccess();
+      },
+      onFailure(err) {
+        btn.disabled = false;
+        btn.textContent = '登录';
+        showError(errorEl, err.message || '登录失败');
+      },
+      newPasswordRequired(userAttributes) {
+        document.getElementById('login-form').style.display = 'none';
+        document.getElementById('newpass-form').style.display = 'block';
+        window._newPassAttrs = userAttributes;
+      }
+    });
+  }
+
+  function handleNewPassword() {
+    const newPass = document.getElementById('new-password').value;
+    const confirm = document.getElementById('confirm-password').value;
+    const errorEl = document.getElementById('newpass-error');
+
+    if (!newPass || newPass.length < 8) {
+      showError(errorEl, '密码至少8位。');
+      return;
+    }
+    if (newPass !== confirm) {
+      showError(errorEl, '两次密码不一致。');
+      return;
+    }
+
+    const attrs = window._newPassAttrs || {};
+    delete attrs.email_verified;
+    delete attrs.email;
+
+    cognitoUser.completeNewPasswordChallenge(newPass, attrs, {
+      onSuccess(session) {
+        currentSession.idToken = session.getIdToken().getJwtToken();
+        currentSession.accessToken = session.getAccessToken().getJwtToken();
+        currentSession.refreshToken = session.getRefreshToken();
+        onLoginSuccess();
+      },
+      onFailure(err) {
+        showError(errorEl, err.message || '设置密码失败');
+      }
+    });
+  }
+
+  function handleLogout() {
+    if (refreshInterval) clearInterval(refreshInterval);
+    if (cognitoUser) cognitoUser.signOut();
+    currentSession = { idToken: null, accessToken: null, refreshToken: null };
+    cognitoUser = null;
+    stationId = null;
+    document.getElementById('login-view').style.display = 'flex';
+    document.getElementById('dashboard-view').style.display = 'none';
+    document.getElementById('login-form').style.display = 'block';
+    document.getElementById('newpass-form').style.display = 'none';
+    document.getElementById('login-password').value = '';
+    document.getElementById('login-btn').disabled = false;
+    document.getElementById('login-btn').textContent = '登录';
+  }
+
+  // ===== POST-LOGIN =====
+  function onLoginSuccess() {
+    // Extract stationId from JWT custom:stationId claim
+    try {
+      const payload = JSON.parse(atob(currentSession.idToken.split('.')[1]));
+      stationId = payload['custom:stationId'] || null;
+    } catch (e) {
+      stationId = null;
+    }
+
+    if (!stationId) {
+      showError(document.getElementById('login-error'), '此帐号未分配站点 (缺少 custom:stationId)');
+      handleLogout();
+      return;
+    }
+
+    document.getElementById('login-view').style.display = 'none';
+    document.getElementById('dashboard-view').style.display = 'block';
+    document.getElementById('station-title').textContent = '站点 ' + stationId + ' — 展商控制台';
+
+    // Auto-fill tagId from URL param
+    const params = new URLSearchParams(window.location.search);
+    const tagFromUrl = params.get('tagId');
+    if (tagFromUrl) {
+      document.getElementById('checkin-tag-input').value = tagFromUrl;
+    }
+
+    // Load station data and start auto-refresh
+    loadStationData();
+    refreshInterval = setInterval(loadStationData, 30000);
+  }
+
+  // ===== STATION DATA =====
+  async function loadStationData() {
+    const container = document.getElementById('stats-content');
+    try {
+      const res = await fetch(`${CONFIG.API_BASE}/stations/${stationId}`, {
+        headers: { 'Authorization': `Bearer ${currentSession.idToken}` }
+      });
+      const data = await res.json();
+
+      if (data.error) {
+        container.innerHTML = '<div style="color:var(--danger)">加载失败: ' + escapeHtml(data.message || data.error) + '</div>';
+        return;
+      }
+
+      const uniqueVisitors = data.uniqueVisitors || data.visitorCount || 0;
+      const recentCheckins = data.recentCheckins || data.visits || [];
+      const last10 = recentCheckins.slice(0, 10);
+
+      let html = '<div class="stat-value">' + uniqueVisitors + '</div>';
+      html += '<div class="stat-label">独立访客</div>';
+
+      if (last10.length > 0) {
+        html += '<ul class="checkin-list">';
+        for (const c of last10) {
+          const ts = c.timestamp || c.checkinTime || c.time || '';
+          const display = ts ? formatTimestamp(ts) : '—';
+          html += '<li>' + display + '</li>';
+        }
+        html += '</ul>';
+      } else {
+        html += '<div style="color:var(--muted);margin-top:1rem;font-size:0.85rem">暂无打卡记录</div>';
+      }
+
+      html += '<div class="auto-refresh-note">自动刷新中... 每30秒</div>';
+      container.innerHTML = html;
+    } catch (e) {
+      container.innerHTML = '<div style="color:var(--danger)">网络错误: ' + escapeHtml(e.message) + '</div>';
+    }
+  }
+
+  // ===== MANUAL CHECK-IN =====
+  async function doManualCheckin() {
+    const tagInput = document.getElementById('checkin-tag-input');
+    const resultEl = document.getElementById('checkin-result');
+    const tagId = tagInput.value.trim();
+
+    if (!tagId) {
+      showCheckinResult('error', '请输入 Tag ID');
+      return;
+    }
+
+    resultEl.style.display = 'none';
+    resultEl.className = 'checkin-result';
+
+    try {
+      const res = await fetch(`${CONFIG.API_BASE}/checkin`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${currentSession.idToken}`
+        },
+        body: JSON.stringify({
+          tagId: tagId,
+          scannerId: 'station-' + stationId
+        })
+      });
+
+      const data = await res.json();
+
+      if (res.ok && !data.error) {
+        showCheckinResult('success', '✓ 打卡成功');
+        // Refresh station data after successful checkin
+        loadStationData();
+      } else if (data.error === 'cooldown' || (data.message && data.message.includes('cooldown'))) {
+        showCheckinResult('cooldown', '⚠ 冷却中 — ' + (data.message || '请稍后再试'));
+      } else {
+        showCheckinResult('error', '✗ ' + (data.message || data.error || '打卡失败'));
+      }
+    } catch (e) {
+      showCheckinResult('error', '✗ 网络错误: ' + e.message);
+    }
+  }
+
+  function showCheckinResult(type, message) {
+    const el = document.getElementById('checkin-result');
+    el.className = 'checkin-result ' + type;
+    el.textContent = message;
+    el.style.display = 'block';
+  }
+
+  // ===== UTILITIES =====
+  function showError(el, msg) {
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  function formatTimestamp(ts) {
+    try {
+      const d = new Date(ts);
+      if (isNaN(d.getTime())) return ts;
+      return d.toLocaleString('zh-CN', {
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit'
+      });
+    } catch (e) {
+      return ts;
+    }
+  }
+
+  function showToast(msg, type) {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.className = 'toast ' + type;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 3000);
+  }
+
+  // ===== BOOT =====
+  initCognito();
+  </script>
+</body>
+</html>

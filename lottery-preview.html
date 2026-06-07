@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Signal Over Noise — Lottery 本地预览 (MOCK)</title>
+  <style>
+    :root {
+      --bg: #050914;
+      --signal: #7df9ff;
+      --signal-2: #b98cff;
+      --text: #eaf6ff;
+      --muted: #8ea6bd;
+      --ok: #73ffb8;
+      --warn: #ff7eb3;
+      --overlay: rgba(3, 6, 14, 0.92);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body { width: 100%; height: 100%; overflow: hidden; }
+
+    body {
+      font-family: "Inter", "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 70% 30%, rgba(125, 249, 255, 0.12), transparent 38%),
+        radial-gradient(circle at 30% 72%, rgba(185, 140, 255, 0.12), transparent 34%),
+        linear-gradient(135deg, #030610 0%, #08142a 50%, #03060d 100%);
+    }
+
+    #lottery-canvas {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      z-index: 1;
+    }
+
+    #status-indicator {
+      position: fixed;
+      top: 20px;
+      right: 24px;
+      z-index: 10;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      font-family: "Share Tech Mono", "Consolas", monospace;
+      font-size: 14px;
+      letter-spacing: 0.08em;
+      border-radius: 999px;
+      border: 1px solid rgba(125, 249, 255, 0.32);
+      background: rgba(7, 16, 34, 0.7);
+      backdrop-filter: blur(6px);
+      color: var(--muted);
+      transition: color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    #status-indicator::before {
+      content: "";
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 8px currentColor;
+    }
+
+    #status-indicator.connected {
+      color: var(--signal);
+      border-color: rgba(125, 249, 255, 0.55);
+      box-shadow: 0 0 18px rgba(125, 249, 255, 0.22);
+    }
+
+    #status-indicator.disconnected {
+      color: var(--warn);
+      border-color: rgba(255, 126, 179, 0.5);
+      box-shadow: 0 0 18px rgba(255, 126, 179, 0.18);
+    }
+
+    #error-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      padding: 40px;
+      text-align: center;
+      background: var(--overlay);
+      backdrop-filter: blur(4px);
+    }
+
+    #error-overlay[hidden] { display: none; }
+
+    #error-overlay .error-title {
+      font-size: clamp(28px, 4vw, 52px);
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #eaffff;
+      text-shadow: 0 0 14px rgba(125, 249, 255, 0.55), 0 0 38px rgba(185, 140, 255, 0.3);
+    }
+
+    #error-overlay .error-message {
+      font-size: clamp(15px, 1.8vw, 20px);
+      color: var(--muted);
+      max-width: 640px;
+      line-height: 1.6;
+    }
+
+    /* MOCK 控制条 + 角标，仅本地预览使用 */
+    #mock-badge {
+      position: fixed;
+      top: 20px;
+      left: 24px;
+      z-index: 30;
+      padding: 6px 14px;
+      font-family: "Share Tech Mono", "Consolas", monospace;
+      font-size: 13px;
+      letter-spacing: 0.1em;
+      border-radius: 999px;
+      border: 1px solid rgba(185, 140, 255, 0.55);
+      background: rgba(7, 16, 34, 0.7);
+      color: var(--signal-2);
+      box-shadow: 0 0 16px rgba(185, 140, 255, 0.25);
+    }
+
+    #mock-controls {
+      position: fixed;
+      bottom: 22px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 30;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      padding: 10px 16px;
+      border-radius: 14px;
+      border: 1px solid rgba(125, 249, 255, 0.28);
+      background: rgba(7, 16, 34, 0.78);
+      backdrop-filter: blur(8px);
+      font-family: "Share Tech Mono", "Consolas", monospace;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    #mock-controls button {
+      cursor: pointer;
+      padding: 8px 16px;
+      border-radius: 10px;
+      border: 1px solid rgba(125, 249, 255, 0.5);
+      background: rgba(125, 249, 255, 0.08);
+      color: var(--signal);
+      font-family: inherit;
+      font-size: 13px;
+      letter-spacing: 0.06em;
+      transition: background 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    #mock-controls button:hover {
+      background: rgba(125, 249, 255, 0.2);
+      box-shadow: 0 0 14px rgba(125, 249, 255, 0.3);
+    }
+
+    #mock-controls .draw-count { color: var(--signal); }
+  </style>
+
+  <!--
+    ============================================================
+    本地预览 MOCK：在加载 main.mjs 之前替换 window.fetch。
+    这样无需后端、无需时间门禁、无需 ≥10 名真实参与者，
+    即可在浏览器中预览完整动画（A→W→S 字母编队 → 噪点球 → 中奖揭晓）。
+    线上代码（main.mjs 及各模块）完全未改动。
+    ============================================================
+  -->
+  <script>
+    (function installLotteryMock() {
+      // 24 个参与者昵称（含中英文/emoji，覆盖渲染分支）
+      const PARTICIPANTS = [
+        '量子比特', 'Alice', '信号猎人', 'Bob', '云原生', 'Carol',
+        '边缘计算', 'Dave', '小λ', 'Eve', '🚀火箭', 'Frank',
+        '反熵', 'Grace', '深度学习', 'Heidi', '比特跳动', 'Ivan',
+        '香农', 'Judy', '🌟星尘', 'Mallory', '噪声中的信号', 'Trent',
+      ];
+
+      // 抽奖结果（递增 drawSeq）。winners 数组随"抽奖"动作增长。
+      const winners = [];
+      let seq = 0;
+      const nowIso = () => new Date().toISOString();
+
+      function realFetchFallback(input, init) {
+        // importmap 指向 unpkg 的 three.js 等真实资源仍走原生 fetch
+        return originalFetch(input, init);
+      }
+
+      const originalFetch = window.fetch ? window.fetch.bind(window) : null;
+
+      function jsonResponse(body, status) {
+        return Promise.resolve(new Response(JSON.stringify(body), {
+          status: status || 200,
+          headers: { 'Content-Type': 'application/json' },
+        }));
+      }
+
+      window.fetch = function mockFetch(input, init) {
+        const url = typeof input === 'string' ? input : (input && input.url) || '';
+
+        if (url.includes('/lottery/participants')) {
+          return jsonResponse({
+            count: PARTICIPANTS.length,
+            participants: PARTICIPANTS.map((nickname) => ({ nickname })),
+          });
+        }
+
+        if (url.includes('/lottery/winners')) {
+          return jsonResponse({
+            count: winners.length,
+            winners: winners.slice(),
+          });
+        }
+
+        // 其它请求（three.js CDN 等）走原生 fetch
+        return realFetchFallback(input, init);
+      };
+
+      // 暴露一个抽奖触发器供控制条/自动定时调用
+      window.__mockDraw = function mockDraw() {
+        seq += 1;
+        const pick = PARTICIPANTS[Math.floor(Math.random() * PARTICIPANTS.length)];
+        winners.push({
+          drawSeq: seq,
+          nickname: pick,
+          tagId: 'tag-' + seq,
+          drawnAt: nowIso(),
+        });
+        const el = document.getElementById('mock-draw-count');
+        if (el) el.textContent = String(seq);
+        // 轮询 (3s) 会自动拾取新 winner；这里也即时拉一次以减少延迟感
+        return pick;
+      };
+    })();
+  </script>
+</head>
+<body>
+  <canvas id="lottery-canvas"></canvas>
+  <div id="status-indicator" class="disconnected">未连接</div>
+
+  <div id="mock-badge">● 本地预览 (MOCK 数据)</div>
+
+  <div id="error-overlay" hidden>
+    <div class="error-title">Signal Lost</div>
+    <p class="error-message">无法加载抽奖动画，请稍后重试。</p>
+  </div>
+
+  <div id="mock-controls">
+    <span>已抽奖 <span id="mock-draw-count" class="draw-count">0</span> 次</span>
+    <button id="mock-draw-btn" type="button">🎲 触发抽奖</button>
+    <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;">
+      <input id="mock-auto" type="checkbox" /> 自动每 12 秒抽一次
+    </label>
+  </div>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+      }
+    }
+  </script>
+  <script type="module" src="web/lottery/main.mjs"></script>
+
+  <script>
+    // 控制条交互（在 main.mjs 之后运行即可，按钮只调用 window.__mockDraw）
+    (function wireControls() {
+      const btn = document.getElementById('mock-draw-btn');
+      const auto = document.getElementById('mock-auto');
+      let timer = null;
+
+      btn.addEventListener('click', function () {
+        if (typeof window.__mockDraw === 'function') window.__mockDraw();
+      });
+
+      auto.addEventListener('change', function () {
+        if (auto.checked) {
+          timer = setInterval(function () {
+            if (typeof window.__mockDraw === 'function') window.__mockDraw();
+          }, 12000);
+        } else if (timer) {
+          clearInterval(timer);
+          timer = null;
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Signal Over Noise — After Party Lottery</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; overflow: hidden; }
+    body {
+      font-family: "Inter", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: #050914;
+      color: #eaf6ff;
+    }
+    #container { position: fixed; inset: 0; }
+
+    .card {
+      width: 110px;
+      height: 130px;
+      background: rgba(0, 80, 80, 0.45);
+      border: 1px solid rgba(125, 249, 255, 0.25);
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 8px;
+      transition: border-color 0.3s, box-shadow 0.3s, background 0.3s;
+      cursor: default;
+    }
+    .card:hover {
+      border-color: rgba(125, 249, 255, 0.6);
+      box-shadow: 0 0 20px rgba(125, 249, 255, 0.3);
+    }
+    .card.winner {
+      border-color: #7df9ff;
+      background: rgba(125, 249, 255, 0.2);
+      box-shadow: 0 0 40px rgba(125, 249, 255, 0.6), 0 0 80px rgba(125, 249, 255, 0.3);
+      transform: scale(1.3);
+      z-index: 100;
+    }
+    .card-avatar {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      border: 2px solid rgba(125, 249, 255, 0.4);
+      object-fit: cover;
+    }
+    .card-name {
+      font-size: 11px;
+      font-weight: 600;
+      text-align: center;
+      color: #cdfaff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100px;
+      font-family: "Share Tech Mono", "PingFang SC", monospace;
+    }
+
+    #status-indicator {
+      position: fixed; top: 20px; right: 24px; z-index: 100;
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 8px 16px; font-family: "Share Tech Mono", monospace;
+      font-size: 14px; letter-spacing: 0.08em; border-radius: 999px;
+      border: 1px solid rgba(125,249,255,0.32);
+      background: rgba(7,16,34,0.8); backdrop-filter: blur(6px);
+      color: #8ea6bd;
+    }
+    #status-indicator::before {
+      content: ""; width: 9px; height: 9px; border-radius: 50%;
+      background: currentColor; box-shadow: 0 0 8px currentColor;
+    }
+    #status-indicator.connected { color: #7df9ff; border-color: rgba(125,249,255,0.55); }
+    #status-indicator.disconnected { color: #ff7eb3; border-color: rgba(255,126,179,0.5); }
+
+    #winner-overlay {
+      display: none;
+      position: fixed; inset: 0; z-index: 200;
+      background: rgba(3,6,14,0.7);
+      align-items: center; justify-content: center;
+      flex-direction: column; gap: 16px;
+    }
+    #winner-overlay.active { display: flex; }
+    #winner-name {
+      font-size: clamp(48px, 8vw, 96px);
+      font-weight: 900;
+      color: #ffffff;
+      text-shadow: 0 0 20px rgba(125,249,255,0.8), 0 0 60px rgba(125,249,255,0.4);
+      font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+    #winner-label {
+      font-size: 18px;
+      color: #7df9ff;
+      font-family: "Share Tech Mono", monospace;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+    }
+  </style>
+</head>
+<body>
+  <div id="container"></div>
+  <div id="status-indicator" class="disconnected">未连接</div>
+  <div id="winner-overlay">
+    <div id="winner-label">🎉 WINNER</div>
+    <div id="winner-name"></div>
+  </div>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+  <script src="https://unpkg.com/@tweenjs/tween.js@23/dist/tween.umd.js"></script>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { CSS3DRenderer, CSS3DObject } from 'three/addons/renderers/CSS3DRenderer.js';
+
+    const API_BASE = 'https://7orrwwprye.execute-api.ap-northeast-1.amazonaws.com';
+    const SPHERE_RADIUS = 900;
+    const POLL_INTERVAL = 3000;
+
+    let camera, scene, renderer;
+    let objects = [];
+    let sphereTargets = [];
+    let tableTargets = [];
+    let currentLayout = 'table';
+    let autoRotate = false;
+    let rotationSpeed = 0.002;
+    let knownDrawSeq = 0;
+    let failureStreak = 0;
+
+    // Simple avatar generator using DiceBear API (or fallback to initials)
+    function avatarUrl(nickname) {
+      // Use DiceBear Avataaars for cute random avatars based on nickname seed
+      return `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(nickname)}&size=80&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`;
+    }
+
+    function init(participants) {
+      camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 1, 10000);
+      camera.position.z = 3200;
+
+      scene = new THREE.Scene();
+
+      const count = participants.length;
+      const cols = Math.ceil(Math.sqrt(count * (window.innerWidth / window.innerHeight)));
+      const rows = Math.ceil(count / cols);
+
+      // Create cards
+      for (let i = 0; i < count; i++) {
+        const p = participants[i];
+
+        const el = document.createElement('div');
+        el.className = 'card';
+        el.dataset.nickname = p.nickname;
+
+        const img = document.createElement('img');
+        img.className = 'card-avatar';
+        img.src = avatarUrl(p.nickname);
+        img.alt = p.nickname;
+        img.loading = 'lazy';
+        el.appendChild(img);
+
+        const name = document.createElement('div');
+        name.className = 'card-name';
+        name.textContent = p.nickname;
+        el.appendChild(name);
+
+        const obj = new CSS3DObject(el);
+        obj.position.x = Math.random() * 4000 - 2000;
+        obj.position.y = Math.random() * 4000 - 2000;
+        obj.position.z = Math.random() * 4000 - 2000;
+        scene.add(obj);
+        objects.push(obj);
+
+        // Table target (grid layout)
+        const tableObj = new THREE.Object3D();
+        const col = i % cols;
+        const row = Math.floor(i / cols);
+        tableObj.position.x = (col - cols / 2) * 140 + 70;
+        tableObj.position.y = -(row - rows / 2) * 155 + 75;
+        tableObj.position.z = 0;
+        tableTargets.push(tableObj);
+
+        // Sphere target
+        const phi = Math.acos(-1 + (2 * i) / count);
+        const theta = Math.sqrt(count * Math.PI) * phi;
+        const sphereObj = new THREE.Object3D();
+        sphereObj.position.setFromSphericalCoords(SPHERE_RADIUS, phi, theta);
+        const vec = sphereObj.position.clone().multiplyScalar(2);
+        sphereObj.lookAt(vec);
+        sphereTargets.push(sphereObj);
+      }
+
+      renderer = new CSS3DRenderer();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      document.getElementById('container').appendChild(renderer.domElement);
+
+      // Start with table layout, then morph to sphere after 5s
+      morphTo(tableTargets, 2000);
+      setTimeout(() => {
+        morphTo(sphereTargets, 2000);
+        currentLayout = 'sphere';
+        setTimeout(() => { autoRotate = true; }, 2500);
+      }, 5000);
+
+      window.addEventListener('resize', onResize);
+      animate();
+    }
+
+    function morphTo(targets, duration) {
+      for (let i = 0; i < objects.length; i++) {
+        const obj = objects[i];
+        const target = targets[i];
+
+        new TWEEN.Tween(obj.position)
+          .to({ x: target.position.x, y: target.position.y, z: target.position.z }, duration + Math.random() * duration * 0.3)
+          .easing(TWEEN.Easing.Exponential.InOut)
+          .start();
+
+        new TWEEN.Tween(obj.rotation)
+          .to({ x: target.rotation.x, y: target.rotation.y, z: target.rotation.z }, duration + Math.random() * duration * 0.3)
+          .easing(TWEEN.Easing.Exponential.InOut)
+          .start();
+      }
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      TWEEN.update();
+      if (autoRotate && currentLayout === 'sphere') {
+        scene.rotation.y += rotationSpeed;
+      }
+      renderer.render(scene, camera);
+    }
+
+    function onResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    // Winner reveal
+    function showWinner(nickname) {
+      // Highlight the card
+      objects.forEach(obj => {
+        obj.element.classList.remove('winner');
+        if (obj.element.dataset.nickname === nickname) {
+          obj.element.classList.add('winner');
+        }
+      });
+
+      // Show overlay
+      const overlay = document.getElementById('winner-overlay');
+      document.getElementById('winner-name').textContent = nickname;
+      overlay.classList.add('active');
+
+      // Auto-hide after 8s
+      setTimeout(() => {
+        overlay.classList.remove('active');
+        objects.forEach(obj => obj.element.classList.remove('winner'));
+      }, 8000);
+    }
+
+    // Polling for winners
+    async function pollWinners() {
+      const statusEl = document.getElementById('status-indicator');
+      try {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 5000);
+        const resp = await fetch(API_BASE + '/lottery/winners', { signal: ctrl.signal });
+        clearTimeout(timer);
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        const body = await resp.json();
+        failureStreak = 0;
+        statusEl.className = 'connected';
+        statusEl.textContent = '已连接';
+
+        const winners = (body.winners || []).filter(w => w.drawSeq > knownDrawSeq);
+        winners.sort((a, b) => a.drawSeq - b.drawSeq);
+        for (const w of winners) {
+          showWinner(w.nickname);
+          knownDrawSeq = w.drawSeq;
+        }
+      } catch (e) {
+        failureStreak++;
+        if (failureStreak >= 3) {
+          statusEl.className = 'disconnected';
+          statusEl.textContent = '未连接';
+        }
+      }
+      setTimeout(pollWinners, failureStreak >= 3 ? 5000 : POLL_INTERVAL);
+    }
+
+    // Bootstrap
+    async function start() {
+      try {
+        const resp = await fetch(API_BASE + '/lottery/participants');
+        if (!resp.ok) throw new Error('Failed to load participants');
+        const data = await resp.json();
+        if (!data.participants || data.participants.length === 0) {
+          document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;color:#8ea6bd;font-size:20px">暂无参与者</div>';
+          return;
+        }
+        init(data.participants);
+        // Start polling after sphere forms
+        setTimeout(pollWinners, 10000);
+      } catch (e) {
+        // Fallback for local dev: use mock data
+        if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+          const mockNames = ['量子比特','信号猎人','云原生小王','深度学习','边缘计算','反熵宇宙','香农弟子','赛博朋克','星际码农','光年旅人','梯度下降','分布式梦','容器飞船','无服务器','数据湖畔','智能体X','流计算师','混沌工程','可观测性','零信任'];
+          init(mockNames.map(n => ({ nickname: n })));
+        } else {
+          document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;color:#ff7eb3;font-size:20px">加载失败: ' + e.message + '</div>';
+        }
+      }
+    }
+
+    start();
+  </script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+{
+  "_comment": "Copy this file to test-users.json and fill in real values. test-users.json is gitignored and must NOT be committed. Prefer setting userPoolId via the USER_POOL_ID env var and passwords via a secret manager rather than hardcoding.",
+  "userPoolId": "REPLACE_WITH_USER_POOL_ID",
+  "users": [
+    { "email": "exhibitor1@example.com", "group": "exhibitor", "password": "REPLACE_WITH_TEMP_PASSWORD", "attributes": { "custom:stationId": "1" } },
+    { "email": "exhibitor2@example.com", "group": "exhibitor", "password": "REPLACE_WITH_TEMP_PASSWORD", "attributes": { "custom:stationId": "2" } },
+    { "email": "staff1@example.com", "group": "staff", "password": "REPLACE_WITH_TEMP_PASSWORD" },
+    { "email": "staff2@example.com", "group": "staff", "password": "REPLACE_WITH_TEMP_PASSWORD" }
+  ]
+}

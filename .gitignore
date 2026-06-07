@@ -1,0 +1,51 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# CDK build artifacts / synthesized output
+infra/cdk.out/
+**/cdk.out/
+*.tsbuildinfo
+
+# Build / dist
+dist/
+build/
+*.js.map
+
+# Test / coverage output
+coverage/
+.nyc_output/
+
+# Environment & secrets (never commit real credentials)
+.env
+.env.*
+*.env
+**/credentials
+*.pem
+*.key
+*.pfx
+*.p12
+.npmrc
+
+# Local-only files containing real accounts / passwords / hardcoded resource names
+# (kept on disk for local use, never committed)
+lambda/checkin/scripts/test-users.json
+SOP-展商.md
+SOP-志愿者.md
+scripts/seed-lottery-demo.mjs
+lambda/checkin/scripts/seed-lottery-demo.mjs
+lambda/checkin/scripts/seed-lottery-full.mjs
+lambda/checkin/scripts/cleanup-garbled.mjs
+
+# Tag data (NFC tag IDs / URLs) and local test page — not committed
+nfc-tag-urls.md
+lambda/checkin/scripts/tags-300.json
+lambda/checkin/scripts/tags-500-random.json
+test.html
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log

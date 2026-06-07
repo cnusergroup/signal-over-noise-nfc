@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "name": "上传 GitHub 前安全检查",
+  "description": "在推送到 GitHub 之前扫描工作区，检测并阻止任何 PII（个人身份信息）、AWS/云资源凭证、API 密钥、密码等敏感信息被上传。",
+  "version": "1",
+  "when": {
+    "type": "userTriggered"
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "在用户把代码推送到 GitHub 之前，对仓库进行一次彻底的信息安全检查。请按以下步骤执行，全程用中文汇报：\n\n1. 确定扫描范围：\n   - 优先检查将要被提交的内容。运行 `git status --porcelain` 和 `git diff --cached`（以及未暂存的 `git diff`）查看改动文件。\n   - 同时检查仓库里**会被实际提交**的文件（用 `git ls-files` 列出已跟踪文件），重点排查未被 .gitignore 忽略的文件。\n   - 读取 .gitignore，确认 node_modules、cdk.out、.env、构建产物等已被忽略；如果敏感目录/文件未被忽略，提示用户补充。\n\n2. 扫描以下敏感信息类别（对将提交的文件内容做 grep/正则检索）：\n   - **云资源凭证**：AWS Access Key ID（AKIA/ASIA 开头的 20 位）、AWS Secret Access Key（40 位 base64）、session token、`aws_access_key_id`/`aws_secret_access_key` 字段、`.aws/credentials` 内容。\n   - **API 密钥 / Token**：通用 api_key、bearer token、GitHub token（ghp_/gho_/ghs_）、Slack token（xox）、Google API key（AIza）、Stripe key（sk_live/pk_live）、私钥文件（-----BEGIN ... PRIVATE KEY-----）、JWT。\n   - **密码 / 连接串**：password=、passwd、pwd、数据库连接字符串（mongodb://、postgres://、mysql:// 带密码）、`Authorization:` 硬编码。\n   - **PII（个人身份信息）**：真实邮箱、手机号、身份证号、姓名+联系方式组合、用户昵称/名单等真实个人数据（注意区分占位符示例与真实数据）。\n   - **基础设施标识符**：真实的 AWS 账号 ID、UserPool ID、Client ID、API endpoint、CloudFront 分发 ID、DynamoDB 表名等——评估这些是否属于不应公开的敏感信息。\n\n3. 特别注意本项目已知可能含敏感信息的位置：\n   - 任何 .env / *.env / credentials / *.pem / *.key 文件\n   - 种子脚本（lambda/checkin/scripts/ 下的 seed-*.mjs）里可能含真实昵称/测试数据\n   - 硬编码在 *.html / *.mjs / *.ts 里的 UserPool ID、Client ID、API endpoint、账号 ID\n   - infra/cdk.out 构建产物（应被忽略）\n\n4. 输出一份清晰的中文检查报告：\n   - ✅ 未发现问题的类别\n   - ⚠️ 发现的疑似敏感信息：列出**文件路径 + 行号 + 敏感类型**，但**不要在聊天里完整回显密钥/密码原文**，只显示前几位或用 *** 脱敏。\n   - 对每一项给出处理建议（移到环境变量、加入 .gitignore、用占位符替换、撤销并轮换已泄露的凭证等）。\n\n5. 给出最终结论：**「可以安全上传」** 或 **「不建议上传，请先处理以上问题」**。如果发现高危项（私钥、AWS Secret、真实密码），明确警告用户必须先处理再推送，并提醒已经提交过的敏感信息需要从 git 历史中清除并轮换凭证。\n\n注意：只做检查和报告，不要自动执行 git push 或修改文件，除非用户明确要求。"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "name": "signal-hunt-last-call",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Last Call finalization Lambda for Signal Hunt",
+  "main": "index.mjs",
+  "scripts": {
+    "test": "echo \"Tests in task 6.5\""
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.700.0",
+    "@aws-sdk/lib-dynamodb": "^3.700.0"
+  }
+}

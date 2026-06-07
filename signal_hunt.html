@@ -1,0 +1,2716 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Community Day | Signal Hunt</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet" />
+  <script src="https://unpkg.com/amazon-cognito-identity-js@6/dist/amazon-cognito-identity.min.js"></script>
+  <script src="https://unpkg.com/qrcode-generator@1.4.4/qrcode.js"></script>
+  <style>
+    :root {
+      --bg: #050914;
+      --panel: rgba(7, 16, 34, 0.78);
+      --line: rgba(125, 190, 255, 0.28);
+      --signal: #7df9ff;
+      --signal-2: #b98cff;
+      --signal-3: #73ffb8;
+      --signal-4: #ffe08a;
+      --signal-5: #ff7eb3;
+      --signal-6: #64dfdf;
+      --signal-7: #ffa94d;
+      --signal-8: #a9e34b;
+      --signal-9: #e599f7;
+      --signal-10: #74c0fc;
+      --text: #eaf6ff;
+      --muted: #8ea6bd;
+      --overlay: rgba(3, 6, 14, 0.88);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      font-family: Inter, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 70% 30%, rgba(73, 151, 255, 0.16), transparent 34%),
+        radial-gradient(circle at 40% 70%, rgba(162, 98, 255, 0.12), transparent 30%),
+        linear-gradient(135deg, #030610 0%, #08142a 50%, #03060d 100%);
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.38;
+      background-image:
+        linear-gradient(rgba(125,249,255,.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(125,249,255,.06) 1px, transparent 1px);
+      background-size: 48px 48px;
+      mask-image: radial-gradient(circle at center, black 0 50%, transparent 78%);
+      z-index: 0;
+    }
+
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background: repeating-linear-gradient(
+        to bottom,
+        rgba(255,255,255,0.02) 0px,
+        rgba(255,255,255,0.02) 1px,
+        transparent 3px,
+        transparent 8px
+      );
+      mix-blend-mode: screen;
+      opacity: .3;
+      z-index: 0;
+    }
+
+    .noise-particles {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        radial-gradient(circle, rgba(255,255,255,.4) 0 1px, transparent 1.6px),
+        radial-gradient(circle, rgba(125,249,255,.4) 0 1px, transparent 1.8px),
+        radial-gradient(circle, rgba(185,140,255,.35) 0 1px, transparent 1.8px);
+      background-size: 90px 90px, 130px 130px, 170px 170px;
+      animation: drift 18s linear infinite;
+      opacity: .3;
+      z-index: 0;
+    }
+
+    @keyframes drift {
+      from { transform: translate3d(0,0,0); }
+      to { transform: translate3d(-90px, 40px, 0); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .noise-particles, body::before, body::after { animation: none; }
+      .orb, .orb::before, .orb::after, .person .avatar, .person .avatar::before { animation: none; }
+      .modal-overlay::before, .modal-overlay::after, .modal-overlay .noise-grain, .modal-overlay .glitch-band { animation: none; }
+    }
+
+    /* ===== LAYOUT ===== */
+    .page {
+      position: relative;
+      width: 100%;
+      height: 100vh;
+      padding: 24px 28px;
+      display: grid;
+      grid-template-columns: 290px 1fr;
+      gap: 24px;
+      z-index: 2;
+      overflow: hidden;
+    }
+
+    /* ===== SIDEBAR ===== */
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 4;
+      height: calc(100vh - 48px);
+      overflow: hidden;
+    }
+
+    .sidebar::-webkit-scrollbar { width: 4px; }
+    .sidebar::-webkit-scrollbar-track { background: transparent; }
+    .sidebar::-webkit-scrollbar-thumb { background: rgba(125,249,255,.3); border-radius: 2px; }
+
+    .eyebrow {
+      letter-spacing: 0.3em;
+      font-size: 10px;
+      font-family: 'Share Tech Mono', monospace;
+      color: rgba(234,246,255,.7);
+      text-transform: uppercase;
+    }
+
+    .title {
+      margin: 6px 0 8px;
+      line-height: .88;
+      letter-spacing: .02em;
+      text-transform: uppercase;
+    }
+
+    .title .signal {
+      display: block;
+      font-size: clamp(36px, 3.8vw, 56px);
+      font-weight: 900;
+      color: #eaffff;
+      text-shadow: 0 0 12px rgba(125,249,255,.6), 0 0 34px rgba(125,249,255,.3);
+    }
+
+    .title .over {
+      display: block;
+      margin-left: 48px;
+      font-size: 18px;
+      font-family: 'Share Tech Mono', monospace;
+      color: #4e94ff;
+      text-shadow: 0 0 15px rgba(78,148,255,.5);
+    }
+
+    .title .noise {
+      position: relative;
+      display: block;
+      font-size: clamp(32px, 3.4vw, 50px);
+      font-weight: 900;
+      color: rgba(230,235,245,.45);
+      filter: blur(.35px);
+      text-shadow: 5px 0 0 rgba(255,255,255,.05), -5px 0 0 rgba(125,249,255,.07);
+    }
+
+    .title .noise::before,
+    .title .noise::after {
+      content: "Noise";
+      position: absolute;
+      left: 0;
+      width: 100%;
+      overflow: hidden;
+      color: rgba(255,255,255,.32);
+    }
+
+    .title .noise::before {
+      top: 5px;
+      clip-path: inset(0 0 58% 0);
+      transform: translateX(7px);
+    }
+
+    .title .noise::after {
+      top: -4px;
+      clip-path: inset(52% 0 0 0);
+      transform: translateX(-6px);
+    }
+
+    .tagline {
+      margin: 0 0 8px;
+      font-size: 13px;
+      line-height: 1.5;
+      color: rgba(234,246,255,.7);
+    }
+
+    .tagline strong { color: #fff; }
+
+    .panel {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: 12px;
+      box-shadow: 0 12px 40px rgba(0,0,0,.3), inset 0 0 20px rgba(125,249,255,.03);
+      backdrop-filter: blur(14px);
+    }
+
+    .progress-panel { padding: 12px; }
+
+    /* ===== LOTTERY PANEL (trigger button in main page) ===== */
+    .lottery-panel { padding: 12px; }
+    .lottery-panel[hidden] { display: none; }
+
+    .lottery-panel .lottery-trigger-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      padding: 12px 16px;
+      border: 1px solid rgba(125,249,255,.35);
+      border-radius: 12px;
+      background: rgba(125,249,255,.06);
+      color: var(--signal);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 12px;
+      letter-spacing: .08em;
+      cursor: pointer;
+      transition: background .2s, box-shadow .2s;
+    }
+    .lottery-panel .lottery-trigger-btn:hover {
+      background: rgba(125,249,255,.12);
+      box-shadow: 0 0 12px rgba(125,249,255,.2);
+    }
+    .lottery-panel .lottery-trigger-btn .status-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+    }
+    .lottery-panel .lottery-trigger-btn .status-dot.ok { background: var(--signal-3); box-shadow: 0 0 6px var(--signal-3); }
+    .lottery-panel .lottery-trigger-btn .status-dot.pending { background: var(--signal-5); box-shadow: 0 0 6px var(--signal-5); }
+
+    /* ===== LOTTERY MODAL ===== */
+    .lottery-modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: rgba(3,6,14,.88);
+      backdrop-filter: blur(6px);
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .lottery-modal-overlay.active { display: flex; }
+
+    .lottery-modal {
+      background: linear-gradient(145deg, rgba(13,25,50,.95), rgba(8,16,34,.98));
+      border: 1px solid rgba(125,249,255,.2);
+      border-radius: 20px;
+      padding: 32px;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: 0 0 40px rgba(125,249,255,.1), 0 20px 60px rgba(0,0,0,.5);
+      position: relative;
+    }
+
+    .lottery-modal-close {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 20px;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 6px;
+    }
+    .lottery-modal-close:hover { color: var(--text); background: rgba(255,255,255,.05); }
+
+    .lottery-modal h3 {
+      margin: 0 0 16px;
+      font-size: 14px;
+      font-family: 'Share Tech Mono', monospace;
+      letter-spacing: .12em;
+      color: var(--signal);
+      text-transform: uppercase;
+    }
+
+    .lottery-modal p {
+      margin: 0 0 12px;
+      font-size: 14px;
+      line-height: 1.6;
+      color: rgba(234,246,255,.85);
+    }
+
+    .lottery-modal .lottery-status.confirmed {
+      color: var(--signal-3);
+      font-weight: 600;
+      font-size: 15px;
+    }
+
+    .lottery-modal .lottery-status.pending {
+      color: var(--signal-4);
+      font-size: 14px;
+    }
+
+    .lottery-modal .lottery-nickname strong {
+      color: var(--signal);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 16px;
+    }
+
+    .lottery-modal .nickname-form {
+      display: flex;
+      gap: 10px;
+      margin-top: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .lottery-modal .nickname-form label {
+      flex: 1 1 100%;
+      font-size: 11px;
+      font-family: 'Share Tech Mono', monospace;
+      letter-spacing: .1em;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .lottery-modal .nickname-form input {
+      flex: 1 1 auto;
+      min-width: 0;
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: 1px solid rgba(125,249,255,.4);
+      background: rgba(125,249,255,.06);
+      color: var(--text);
+      font-size: 15px;
+      font-family: Inter, sans-serif;
+    }
+
+    .lottery-modal .nickname-form input:focus-visible {
+      outline: 2px solid var(--signal);
+      outline-offset: 2px;
+    }
+
+    .lottery-modal .nickname-form button {
+      cursor: pointer;
+      padding: 10px 20px;
+      font-size: 14px;
+    }
+
+    .lottery-modal .error {
+      color: var(--signal-5);
+      font-size: 12px;
+      margin-top: 8px;
+    }
+    .lottery-modal .error[hidden] { display: none; }
+
+    .panel-title {
+      margin: 0 0 6px;
+      font-size: 10px;
+      font-family: 'Share Tech Mono', monospace;
+      letter-spacing: .16em;
+      color: #8ec9ff;
+      text-transform: uppercase;
+    }
+
+    .progress-row {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .progress-line-row {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .progress-dot {
+      width: 24px;
+      height: 24px;
+      border-radius: 999px;
+      border: 1px solid rgba(234,246,255,.5);
+      display: grid;
+      place-items: center;
+      color: rgba(234,246,255,.6);
+      font-size: 10px;
+      font-family: 'Share Tech Mono', monospace;
+      transition: .4s ease;
+      flex-shrink: 0;
+    }
+
+    .progress-dot.done {
+      color: #021018;
+      border-color: var(--signal);
+      background: var(--signal);
+      box-shadow: 0 0 14px rgba(125,249,255,.6);
+    }
+
+    .progress-line {
+      flex: 1;
+      min-width: 8px;
+      height: 1px;
+      background: rgba(234,246,255,.25);
+    }
+
+    .hint {
+      margin: 6px 0 0;
+      line-height: 1.5;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .button-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      border: 1px solid rgba(125,249,255,.4);
+      background: rgba(125,249,255,.08);
+      color: #dffcff;
+      border-radius: 999px;
+      padding: 6px 12px;
+      font-size: 11px;
+      cursor: pointer;
+      letter-spacing: .04em;
+      font-family: 'Share Tech Mono', monospace;
+      transition: .2s ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 0 14px rgba(125,249,255,.25);
+      background: rgba(125,249,255,.14);
+    }
+
+    button:focus-visible {
+      outline: 2px solid var(--signal);
+      outline-offset: 2px;
+    }
+
+    .cards {
+      padding: 10px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .card {
+      padding: 8px;
+      border-radius: 8px;
+      border: 1px solid rgba(234,246,255,.14);
+      background: rgba(255,255,255,.025);
+      opacity: .4;
+      transition: .4s ease;
+    }
+
+    .card.done {
+      opacity: 1;
+      border-color: rgba(125,249,255,.5);
+      box-shadow: inset 0 0 14px rgba(125,249,255,.06);
+    }
+
+    .card .num { color: var(--signal); font-size: 9px; font-family: 'Share Tech Mono', monospace; }
+    .card h4 { margin: 2px 0 1px; font-size: 10px; }
+    .card p { margin: 0; font-size: 9px; color: var(--muted); }
+
+    /* ===== MAP ===== */
+    .map {
+      position: relative;
+      height: calc(100vh - 48px);
+      border-radius: 28px;
+      overflow: hidden;
+      border: 1px solid rgba(125,190,255,.15);
+      background:
+        radial-gradient(circle at 50% 45%, rgba(125,249,255,.06), transparent 22%),
+        radial-gradient(circle at 75% 65%, rgba(255,224,138,.06), transparent 20%),
+        radial-gradient(circle at 25% 70%, rgba(185,140,255,.06), transparent 20%),
+        rgba(0,0,0,.1);
+      box-shadow: inset 0 0 80px rgba(0,0,0,.4);
+    }
+
+    .path-svg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      opacity: .7;
+      z-index: 1;
+    }
+
+    .path-base {
+      fill: none;
+      stroke: rgba(210,235,255,.28);
+      stroke-width: 1.5;
+      stroke-dasharray: 6 10;
+    }
+
+    .path-segment {
+      fill: none;
+      stroke: var(--signal);
+      stroke-width: 2.5;
+      stroke-linecap: round;
+      filter: drop-shadow(0 0 6px rgba(125,249,255,.6));
+      opacity: 0;
+      transition: opacity .5s ease;
+    }
+
+    .path-segment.active {
+      opacity: 1;
+    }
+
+    .person {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 3;
+      text-align: center;
+      animation: floatCore 4s ease-in-out infinite;
+    }
+
+    .person-label {
+      display: block;
+      margin-top: 6px;
+      font-size: 10px;
+      font-family: 'Share Tech Mono', monospace;
+      letter-spacing: .18em;
+      color: rgba(234,246,255,.7);
+      text-transform: uppercase;
+    }
+
+    @keyframes floatCore {
+      0%,100% { transform: translate(-50%, -50%) translateY(0); }
+      50% { transform: translate(-50%, -50%) translateY(-5px); }
+    }
+
+    .person .avatar {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      margin: 0 auto;
+      background: radial-gradient(circle, rgba(125,249,255,0.15), transparent 70%);
+      border: 1px solid rgba(125,249,255,.5);
+      box-shadow: 0 0 16px rgba(125,249,255,.5), 0 0 32px rgba(125,249,255,.25);
+      color: var(--signal);
+      animation: corePulse 2.5s ease-in-out infinite;
+      position: relative;
+    }
+
+    .person .avatar::before {
+      content: "";
+      position: absolute;
+      inset: -16px;
+      border-radius: 50%;
+      border: 1px solid rgba(125,249,255,.25);
+      animation: ripple 3s linear infinite;
+    }
+
+    @keyframes corePulse {
+      0%,100% { box-shadow: 0 0 16px rgba(125,249,255,.5), 0 0 32px rgba(125,249,255,.25); }
+      50% { box-shadow: 0 0 30px rgba(125,249,255,.8), 0 0 60px rgba(125,249,255,.4); }
+    }
+
+    @keyframes ripple {
+      0% { transform: scale(0.8); opacity: .5; }
+      100% { transform: scale(1.4); opacity: 0; }
+    }
+
+    /* ===== STATIONS ===== */
+    .station {
+      position: absolute;
+      width: 200px;
+      z-index: 3;
+      cursor: pointer;
+      transform: translate(-50%, -50%);
+    }
+
+    .station[data-id="1"]  { --c: var(--signal); }
+    .station[data-id="2"]  { --c: var(--signal-2); }
+    .station[data-id="3"]  { --c: var(--signal-3); }
+    .station[data-id="4"]  { --c: var(--signal-4); }
+    .station[data-id="5"]  { --c: var(--signal-5); }
+    .station[data-id="6"]  { --c: var(--signal-6); }
+    .station[data-id="7"]  { --c: var(--signal-7); }
+    .station[data-id="8"]  { --c: var(--signal-8); }
+    .station[data-id="9"]  { --c: var(--signal-9); }
+    .station[data-id="10"] { --c: var(--signal-10); }
+
+    .orb {
+      position: relative;
+      width: 88px;
+      height: 88px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      border: 1px solid color-mix(in srgb, var(--c), white 15%);
+      background: radial-gradient(circle, color-mix(in srgb, var(--c), transparent 80%), transparent 66%);
+      box-shadow: 0 0 18px color-mix(in srgb, var(--c), transparent 50%);
+      margin-bottom: 8px;
+      transition: .5s ease;
+      animation: glowPulse 2.5s ease-in-out infinite;
+    }
+
+    .station.unlocked .orb {
+      animation: explode 0.5s ease forwards, glowPulse 2.5s ease-in-out infinite;
+    }
+
+    @keyframes glowPulse {
+      0%,100% { box-shadow: 0 0 16px color-mix(in srgb, var(--c), transparent 50%); }
+      50% { box-shadow: 0 0 32px var(--c), 0 0 60px color-mix(in srgb, var(--c), transparent 40%); }
+    }
+
+    @keyframes explode {
+      0% { transform: scale(0.5); opacity: 0; }
+      60% { transform: scale(1.15); }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    .orb::before,
+    .orb::after {
+      content: "";
+      position: absolute;
+      inset: -10px;
+      border-radius: 50%;
+      border: 1px solid color-mix(in srgb, var(--c), transparent 60%);
+      animation: pulse 2.6s ease-in-out infinite;
+    }
+
+    .orb::after { inset: -22px; opacity: .3; animation-delay: .7s; }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(.95); opacity: .3; }
+      50% { transform: scale(1.06); opacity: .7; }
+    }
+
+    .icon {
+      color: var(--c);
+      filter: drop-shadow(0 0 8px var(--c));
+    }
+
+    .label {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+      text-shadow: 0 3px 16px #000;
+    }
+
+    .badge {
+      flex: 0 0 auto;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      border: 1px solid var(--c);
+      color: var(--text);
+      display: grid;
+      place-items: center;
+      font-size: 11px;
+      font-family: 'Share Tech Mono', monospace;
+      box-shadow: 0 0 10px color-mix(in srgb, var(--c), transparent 45%);
+    }
+
+    .label h3 {
+      margin: 0 0 2px;
+      font-size: 14px;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+
+    .label p {
+      margin: 0;
+      color: rgba(234,246,255,.7);
+      font-size: 11px;
+      line-height: 1.4;
+    }
+
+    /* Fog overlay */
+    .fog {
+      position: absolute;
+      inset: -50px;
+      pointer-events: none;
+      z-index: 5;
+      opacity: 1;
+      transition: opacity .8s ease, transform .8s ease;
+    }
+
+    .fog::before {
+      content: "";
+      position: absolute;
+      width: 160%;
+      height: 140%;
+      left: -30%;
+      top: -20%;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at 30% 50%, rgba(255,255,255,0.22), transparent 55%),
+        radial-gradient(circle at 70% 60%, rgba(200,220,255,0.18), transparent 60%);
+      filter: blur(36px);
+      opacity: .85;
+      animation: cloudMove1 18s linear infinite;
+    }
+
+    .fog::after {
+      content: "";
+      position: absolute;
+      width: 180%;
+      height: 150%;
+      left: -40%;
+      top: -30%;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at 60% 40%, rgba(255,255,255,0.18), transparent 55%),
+        radial-gradient(circle at 40% 70%, rgba(180,200,255,0.16), transparent 60%);
+      filter: blur(46px);
+      opacity: .7;
+      animation: cloudMove2 25s linear infinite;
+    }
+
+    @keyframes cloudMove1 {
+      0% { transform: translateX(-16px) translateY(0); }
+      50% { transform: translateX(18px) translateY(-10px); }
+      100% { transform: translateX(-16px) translateY(0); }
+    }
+
+    @keyframes cloudMove2 {
+      0% { transform: translateX(22px) translateY(8px); }
+      50% { transform: translateX(-18px) translateY(-12px); }
+      100% { transform: translateX(22px) translateY(8px); }
+    }
+
+    .station.unlocked .fog {
+      opacity: 0;
+      transform: scale(.7);
+    }
+
+    .station:not(.unlocked) .orb,
+    .station:not(.unlocked) .label {
+      filter: grayscale(.8) brightness(.55);
+      opacity: .5;
+    }
+
+    .station:not(.unlocked)::after {
+      content: "?";
+      position: absolute;
+      left: 28px;
+      top: 14px;
+      z-index: 6;
+      font-size: 38px;
+      font-family: 'Share Tech Mono', monospace;
+      color: rgba(255,255,255,.3);
+      text-shadow: 0 0 16px rgba(255,255,255,.3);
+    }
+
+    /* Complete banner */
+    .complete-banner {
+      position: absolute;
+      right: 20px;
+      bottom: 20px;
+      width: min(380px, 34vw);
+      padding: 18px;
+      z-index: 5;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(14px);
+      transition: .6s ease;
+    }
+
+    .complete-banner.show {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0);
+    }
+
+    .complete-banner h2 {
+      margin: 0 0 6px;
+      color: var(--signal-4);
+      font-family: 'Share Tech Mono', monospace;
+      letter-spacing: .08em;
+      font-size: 16px;
+    }
+
+    .complete-banner p {
+      margin: 0;
+      color: rgba(234,246,255,.75);
+      line-height: 1.6;
+      font-size: 13px;
+    }
+
+    .legend {
+      position: absolute;
+      right: 20px;
+      top: 18px;
+      z-index: 4;
+      font-size: 11px;
+      font-family: 'Share Tech Mono', monospace;
+      color: rgba(234,246,255,.55);
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+
+    .legend span { color: var(--signal); margin-left: 16px; }
+
+    /* Final flash */
+    .final-flash {
+      position: fixed;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      background:
+        radial-gradient(circle, rgba(125,249,255,0.9), transparent 50%),
+        radial-gradient(circle, rgba(255,224,138,0.8), transparent 68%),
+        #000;
+      z-index: 999;
+      opacity: 0;
+      pointer-events: none;
+      transform: scale(.85);
+    }
+
+    .final-flash::before {
+      content: "SIGNAL FOUND";
+      font-size: clamp(40px, 7vw, 100px);
+      font-weight: 900;
+      letter-spacing: .1em;
+      color: #f6ffff;
+      text-shadow: 0 0 20px rgba(125,249,255,1), 0 0 60px rgba(255,224,138,.7);
+    }
+
+    .final-flash.show {
+      animation: flashBoom 1.2s ease forwards;
+    }
+
+    @keyframes flashBoom {
+      0% { opacity: 0; transform: scale(0.8); }
+      22% { opacity: 1; transform: scale(1.02); }
+      62% { opacity: .85; transform: scale(1.06); }
+      100% { opacity: 0; transform: scale(1.18); }
+    }
+
+    /* ===== MODAL ===== */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      display: grid;
+      place-items: center;
+      background: rgba(3, 6, 14, 0.92);
+      backdrop-filter: blur(4px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .3s ease;
+    }
+
+    .modal-overlay::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image:
+        repeating-linear-gradient(
+          0deg,
+          rgba(255,255,255,0.04) 0px,
+          rgba(255,255,255,0.04) 1px,
+          transparent 1px,
+          transparent 4px
+        );
+      background-size: 100% 4px;
+      animation: scanlines 0.08s steps(8) infinite;
+      opacity: .5;
+    }
+
+    .modal-overlay::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at 30% 20%, rgba(185,140,255,0.12), transparent 35%),
+        radial-gradient(circle at 75% 75%, rgba(125,249,255,0.1), transparent 30%),
+        radial-gradient(circle at 55% 45%, rgba(255,126,179,0.06), transparent 40%);
+      background-size: 200% 200%;
+      animation: noiseGlow 6s ease-in-out infinite;
+    }
+
+    /* Noise grain layer */
+    .modal-overlay .noise-grain {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: .12;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      background-size: 180px 180px;
+      animation: grainDrift 0.3s steps(4) infinite;
+    }
+
+    /* Glitch flicker band */
+    .modal-overlay .glitch-band {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: rgba(125,249,255,.25);
+      box-shadow: 0 0 8px rgba(125,249,255,.4);
+      pointer-events: none;
+      opacity: 0;
+      animation: glitchScan 4s linear infinite;
+    }
+
+    @keyframes scanlines {
+      0% { transform: translateY(0); }
+      100% { transform: translateY(4px); }
+    }
+
+    @keyframes noiseGlow {
+      0%, 100% { background-position: 0% 0%; opacity: .7; }
+      25% { background-position: 50% 100%; opacity: .5; }
+      50% { background-position: 100% 50%; opacity: .8; }
+      75% { background-position: 30% 20%; opacity: .6; }
+    }
+
+    @keyframes grainDrift {
+      0% { transform: translate(0, 0); }
+      25% { transform: translate(-2px, 3px); }
+      50% { transform: translate(3px, -1px); }
+      75% { transform: translate(-1px, -2px); }
+      100% { transform: translate(2px, 1px); }
+    }
+
+    @keyframes glitchScan {
+      0%, 92% { opacity: 0; top: -2px; }
+      93% { opacity: .8; top: 15%; }
+      94% { opacity: 0; top: 15%; }
+      95% { opacity: .6; top: 45%; }
+      96% { opacity: 0; top: 45%; }
+      97% { opacity: .9; top: 72%; }
+      98% { opacity: 0; top: 72%; }
+      99% { opacity: .5; top: 88%; }
+      100% { opacity: 0; top: 88%; }
+    }
+
+    .modal-overlay.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal {
+      position: relative;
+      width: min(520px, 90vw);
+      max-height: 85vh;
+      overflow-y: auto;
+      border: 1px solid rgba(125,249,255,.35);
+      background:
+        radial-gradient(ellipse at 50% 0%, rgba(125,249,255,0.06), transparent 50%),
+        var(--panel);
+      border-radius: 20px;
+      padding: 28px;
+      box-shadow:
+        0 0 40px rgba(125,249,255,.12),
+        0 0 80px rgba(125,249,255,.06),
+        0 24px 80px rgba(0,0,0,.6),
+        inset 0 1px 0 rgba(125,249,255,.15);
+      backdrop-filter: blur(20px);
+      transform: translateY(20px) scale(.96);
+      transition: transform .4s ease, box-shadow .4s ease;
+      z-index: 1;
+    }
+
+    .modal-overlay.show .modal {
+      transform: translateY(0) scale(1);
+      box-shadow:
+        0 0 60px rgba(125,249,255,.18),
+        0 0 120px rgba(125,249,255,.08),
+        0 24px 80px rgba(0,0,0,.6),
+        inset 0 1px 0 rgba(125,249,255,.2);
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 1px solid rgba(234,246,255,.2);
+      background: rgba(255,255,255,.05);
+      color: var(--text);
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      padding: 0;
+      transition: .2s ease;
+    }
+
+    .modal-close:hover {
+      background: rgba(255,255,255,.1);
+      border-color: var(--signal);
+    }
+
+    .modal-close:focus-visible {
+      outline: 2px solid var(--signal);
+      outline-offset: 2px;
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+
+    .modal-badge {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font-size: 18px;
+      font-weight: 700;
+      font-family: 'Share Tech Mono', monospace;
+      border: 2px solid var(--signal);
+      color: var(--signal);
+      box-shadow: 0 0 16px rgba(125,249,255,.4);
+    }
+
+    .modal-title {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      margin: 0;
+    }
+
+    .modal-subtitle {
+      margin: 4px 0 0;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .modal-body > div {
+      margin-bottom: 18px;
+    }
+
+    .modal-body > div:last-child {
+      margin-bottom: 0;
+    }
+
+    .modal-sponsor {
+      padding: 16px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,224,138,.3);
+      background: rgba(255,224,138,.05);
+    }
+
+    .modal-sponsor .sponsor-label {
+      font-size: 10px;
+      font-family: 'Share Tech Mono', monospace;
+      letter-spacing: .14em;
+      color: var(--signal-4);
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .modal-sponsor .sponsor-name {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+
+    .modal-sponsor .sponsor-tagline {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .modal-description {
+      font-size: 14px;
+      line-height: 1.7;
+      color: rgba(234,246,255,.85);
+    }
+
+    .modal-offer {
+      padding: 14px;
+      border-radius: 10px;
+      border: 1px solid rgba(115,255,184,.3);
+      background: rgba(115,255,184,.05);
+    }
+
+    .modal-offer .offer-label {
+      font-size: 10px;
+      font-family: 'Share Tech Mono', monospace;
+      letter-spacing: .14em;
+      color: var(--signal-3);
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .modal-offer .offer-text {
+      font-size: 14px;
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    .modal-qr {
+      text-align: center;
+      padding: 14px;
+      border-radius: 10px;
+      border: 1px solid rgba(125,249,255,.2);
+      background: rgba(125,249,255,.03);
+    }
+
+    .modal-qr .qr-label {
+      font-size: 10px;
+      font-family: 'Share Tech Mono', monospace;
+      letter-spacing: .14em;
+      color: var(--signal);
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .modal-qr .qr-placeholder {
+      width: 120px;
+      height: 120px;
+      margin: 0 auto;
+      border: 2px dashed rgba(125,249,255,.4);
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 1024px) {
+      .page {
+        grid-template-columns: 1fr;
+        height: auto;
+        min-height: 100vh;
+        padding: 20px 16px;
+        gap: 20px;
+        overflow: visible;
+      }
+      .sidebar {
+        height: auto;
+        overflow: visible;
+      }
+      .map { min-height: 700px; height: auto; overflow: hidden; }
+      .cards { grid-template-columns: repeat(5, 1fr); }
+      .station { width: 170px; }
+      .orb { width: 72px; height: 72px; }
+      .label h3 { font-size: 12px; }
+      .label p { font-size: 10px; }
+      .complete-banner { width: calc(100% - 32px); right: 16px; }
+    }
+
+    /* ===== MOBILE: Vertical Timeline Layout ===== */
+    @media (max-width: 720px) {
+      .page {
+        padding: 20px 16px;
+        gap: 18px;
+        height: auto;
+        min-height: 100vh;
+        overflow: visible;
+      }
+
+      .sidebar {
+        height: auto;
+        overflow: visible;
+      }
+
+      .title .signal { font-size: 52px; }
+      .title .over { font-size: 20px; margin-left: 42px; }
+      .title .noise { font-size: 48px; }
+      .tagline { font-size: 14px; }
+
+      .cards { grid-template-columns: repeat(2, 1fr); gap: 6px; }
+
+      /* Switch map to vertical timeline */
+      .map {
+        min-height: auto;
+        height: auto;
+        padding: 20px 12px;
+        border-radius: 20px;
+        background:
+          radial-gradient(circle at 50% 0%, rgba(125,249,255,.06), transparent 30%),
+          rgba(0,0,0,.1);
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+      }
+
+      .legend { top: 14px; right: 14px; font-size: 10px; }
+
+      /* Hide the SVG path on mobile */
+      .path-svg { display: none; }
+
+      /* Hide the person/avatar on mobile */
+      .person { display: none; }
+
+      /* Stations become vertical list items */
+      .station {
+        position: relative !important;
+        left: 0 !important;
+        top: 0 !important;
+        transform: none !important;
+        width: 100%;
+        margin: 0 0 14px;
+        padding: 14px 14px 14px 70px;
+        border-radius: 14px;
+        border: 1px solid rgba(234,246,255,.1);
+        background: rgba(255,255,255,.02);
+        display: block;
+        min-height: 72px;
+      }
+
+      .station.unlocked {
+        border-color: color-mix(in srgb, var(--c), transparent 60%);
+        background: color-mix(in srgb, var(--c), transparent 92%);
+      }
+
+      .station .orb {
+        position: absolute;
+        left: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 52px;
+        height: 52px;
+        margin: 0;
+      }
+
+      .station .orb::before,
+      .station .orb::after { display: none; }
+
+      /* Disable explode animation on mobile to preserve vertical centering */
+      .station.unlocked .orb {
+        animation: glowPulse 2.5s ease-in-out infinite;
+        transform: translateY(-50%);
+      }
+
+      .station .icon svg { width: 22px; height: 22px; }
+
+      .station .label {
+        margin: 0;
+        text-shadow: none;
+      }
+
+      .station .label h3 {
+        font-size: 14px;
+        margin-bottom: 3px;
+      }
+
+      .station .label p {
+        font-size: 11px;
+        line-height: 1.4;
+      }
+
+      .station .badge {
+        width: 20px;
+        height: 20px;
+        font-size: 10px;
+      }
+
+      /* Simplify fog on mobile */
+      .fog {
+        inset: 0;
+        border-radius: 14px;
+        overflow: hidden;
+      }
+
+      .fog::before,
+      .fog::after {
+        width: 100%;
+        height: 100%;
+        left: 0;
+        top: 0;
+        border-radius: 14px;
+        filter: blur(14px);
+      }
+
+      .station:not(.unlocked)::after {
+        left: auto;
+        right: 16px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 24px;
+      }
+
+      .complete-banner {
+        position: static;
+        width: 100%;
+        margin-top: 4px;
+      }
+
+      /* Tap feedback */
+      .station:active { transform: scale(.98) !important; transition: transform .1s ease; }
+
+      /* Modal adjustments for mobile */
+      .modal {
+        width: calc(100vw - 24px);
+        max-height: 90vh;
+        padding: 20px;
+        border-radius: 16px;
+      }
+
+      .modal-title { font-size: 18px; }
+      .modal-header { gap: 10px; margin-bottom: 16px; }
+      .modal-badge { width: 40px; height: 40px; font-size: 16px; }
+    }
+
+    /* Mobile landscape */
+    @media (max-height: 500px) and (orientation: landscape) {
+      .page {
+        height: 100vh;
+        min-height: 0;
+        overflow: hidden;
+        grid-template-columns: 220px 1fr;
+        grid-template-rows: 100%;
+        padding: 12px 12px;
+        gap: 12px;
+      }
+
+      .sidebar {
+        height: 100%;
+        max-height: none;
+        overflow-x: hidden;
+        overflow-y: auto;
+      }
+
+      .map {
+        height: 100%;
+        min-height: 0;
+        overflow: hidden;
+        border-radius: 16px;
+      }
+
+      /* Ensure person doesn't block stations */
+      .person { pointer-events: none; }
+
+      /* Reduce fog spread in landscape to prevent overlap */
+      .fog {
+        inset: -15px;
+      }
+
+      .fog::before {
+        width: 110%;
+        height: 110%;
+        left: -5%;
+        top: -5%;
+        filter: blur(16px);
+      }
+
+      .fog::after {
+        width: 120%;
+        height: 120%;
+        left: -10%;
+        top: -10%;
+        filter: blur(20px);
+      }
+
+      .title .signal { font-size: 32px; }
+      .title .over { font-size: 14px; margin-left: 28px; }
+      .title .noise { font-size: 28px; }
+      .tagline { font-size: 11px; }
+
+      /* Cards: 2 columns to fit narrow sidebar */
+      .cards { grid-template-columns: repeat(2, 1fr); gap: 4px; }
+      .card { padding: 5px; }
+      .card h4 { font-size: 9px; }
+      .card p { font-size: 8px; }
+
+      .progress-panel { padding: 8px; }
+      .hint { font-size: 10px; }
+      .button-row { margin-top: 6px; }
+      button { padding: 4px 8px; font-size: 10px; }
+
+      .station { width: 140px; }
+      .orb { width: 52px; height: 52px; }
+      .label h3 { font-size: 11px; }
+      .label p { font-size: 9px; }
+
+      /* Complete banner: compact in landscape */
+      .complete-banner {
+        width: min(240px, 30vw);
+        padding: 10px 12px;
+        bottom: 8px;
+        right: 8px;
+        border-radius: 10px;
+      }
+
+      .complete-banner h2 { font-size: 12px; margin-bottom: 3px; }
+      .complete-banner p { font-size: 11px; line-height: 1.4; }
+
+      /* Modal: compact in landscape */
+      .modal {
+        width: min(420px, 70vw);
+        max-height: calc(100vh - 20px);
+        padding: 14px 16px;
+        border-radius: 14px;
+      }
+
+      .modal-header { margin-bottom: 10px; gap: 8px; }
+      .modal-badge { width: 32px; height: 32px; font-size: 14px; }
+      .modal-title { font-size: 15px; }
+      .modal-subtitle { font-size: 11px; }
+      .modal-body > div { margin-bottom: 10px; }
+      .modal-description { font-size: 12px; line-height: 1.5; }
+      .modal-sponsor { padding: 10px; }
+      .modal-sponsor .sponsor-name { font-size: 14px; }
+      .modal-sponsor .sponsor-tagline { font-size: 11px; }
+      .modal-offer { padding: 10px; }
+      .modal-offer .offer-text { font-size: 12px; }
+      .modal-qr .qr-placeholder { width: 80px; height: 80px; }
+      .modal-close { width: 28px; height: 28px; top: 10px; right: 10px; }
+    }
+
+    /* Very small devices */
+    @media (max-width: 380px) {
+      .title .signal { font-size: 44px; }
+      .title .over { font-size: 18px; margin-left: 32px; }
+      .title .noise { font-size: 40px; }
+      .cards { grid-template-columns: 1fr 1fr; }
+    }
+</style>
+</head>
+<body>
+  <div class="noise-particles"></div>
+  <div class="final-flash" id="finalFlash" aria-hidden="true"></div>
+
+  <main class="page">
+    <aside class="sidebar">
+      <section>
+        <div class="eyebrow">Community Day · Signal Hunt</div>
+        <h1 class="title">
+          <span class="signal">Signal</span>
+          <span class="over">over</span>
+          <span class="noise">Noise</span>
+        </h1>
+        <p class="tagline">在混沌中，寻找真正的价值。<br /><strong>Collect 10 Signals. Unlock your clarity.</strong></p>
+      </section>
+
+      <section class="panel progress-panel">
+        <h3 class="panel-title">Your Progress</h3>
+        <div class="progress-row" id="progressRow">
+          <div class="progress-line-row">
+            <span class="progress-dot">1</span><span class="progress-line"></span>
+            <span class="progress-dot">2</span><span class="progress-line"></span>
+            <span class="progress-dot">3</span><span class="progress-line"></span>
+            <span class="progress-dot">4</span><span class="progress-line"></span>
+            <span class="progress-dot">5</span>
+          </div>
+          <div class="progress-line-row">
+            <span class="progress-dot">6</span><span class="progress-line"></span>
+            <span class="progress-dot">7</span><span class="progress-line"></span>
+            <span class="progress-dot">8</span><span class="progress-line"></span>
+            <span class="progress-dot">9</span><span class="progress-line"></span>
+            <span class="progress-dot">10</span>
+          </div>
+        </div>
+        <p class="hint" id="statusHint">NFC 打卡: <code>?tagId=xxx&scannerId=yyy</code></p>
+      </section>
+
+      <!-- After Party Lottery panel (hidden, no longer standalone) -->
+      <section class="panel lottery-panel" id="lottery-panel" hidden></section>
+
+      <section class="panel cards" id="cards">
+        <div class="card"><span class="num">01</span><h4>Noise Detector</h4><p>噪声探测者</p></div>
+        <div class="card"><span class="num">02</span><h4>Pattern Finder</h4><p>模式发现者</p></div>
+        <div class="card"><span class="num">03</span><h4>Insight Engine</h4><p>洞察引擎</p></div>
+        <div class="card"><span class="num">04</span><h4>Decision Maker</h4><p>决策者</p></div>
+        <div class="card"><span class="num">05</span><h4>Signal Amplifier</h4><p>信号放大器</p></div>
+        <div class="card"><span class="num">06</span><h4>Data Weaver</h4><p>数据编织者</p></div>
+        <div class="card"><span class="num">07</span><h4>Chaos Navigator</h4><p>混沌领航员</p></div>
+        <div class="card"><span class="num">08</span><h4>Truth Seeker</h4><p>真相探索者</p></div>
+        <div class="card"><span class="num">09</span><h4>Clarity Forge</h4><p>清晰锻造者</p></div>
+        <div class="card"><span class="num">10</span><h4>Signal Master</h4><p>信号大师</p></div>
+      </section>
+    </aside>
+
+    <section class="map" id="mapArea">
+      <div class="legend">Noise — <span>Signal —</span></div>
+
+      <svg class="path-svg" viewBox="0 0 1000 800" preserveAspectRatio="none" aria-hidden="true">
+        <defs>
+          <mask id="pathGapMask" maskUnits="userSpaceOnUse" x="0" y="0" width="1000" height="800">
+            <rect width="1000" height="800" fill="white"/>
+            <g id="stationGaps"></g>
+          </mask>
+        </defs>
+        <path class="path-base" id="basePath" mask="url(#pathGapMask)" d="M 820 70 C 700 70, 400 70, 280 160 C 180 240, 180 340, 300 380 C 420 420, 620 430, 720 470 C 820 510, 820 600, 700 640 C 560 680, 280 680, 180 640" />
+        <g id="pathSegments"></g>
+      </svg>
+
+      <!-- 10 Stations -->
+      <article class="station" data-id="1">
+        <div class="fog"></div>
+        <div class="orb"><span class="icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span></div>
+        <div class="label"><span class="badge">1</span><div><h3>First Signal</h3><p>In the noise, something begins...</p></div></div>
+      </article>
+
+      <article class="station" data-id="2">
+        <div class="fog"></div>
+        <div class="orb"><span class="icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12l5-5 5 5 5-5 5 5"/></svg></span></div>
+        <div class="label"><span class="badge">2</span><div><h3>Pattern</h3><p>Patterns emerge from chaos.</p></div></div>
+      </article>
+
+      <article class="station" data-id="3">
+        <div class="fog"></div>
+        <div class="orb"><span class="icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg></span></div>
+        <div class="label"><span class="badge">3</span><div><h3>Insight</h3><p>Meaning is discovered.</p></div></div>
+      </article>
+
+      <article class="station" data-id="4">
+        <div class="fog"></div>
+        <div class="orb"><span class="icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/></svg></span></div>
+        <div class="label"><span class="badge">4</span><div><h3>Decision</h3><p>Choose signal. Ignore noise.</p></div></div>
+      </article>
+
+      <article class="station" data-id="5">
+        <div class="fog"></div>
+        <div class="orb"><span class="icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></span></div>
+        <div class="label"><span class="badge">5</span><div><h3>Amplify</h3><p>Boost the signal strength.</p></div></div>
+      </article>
+
+      <article class="station" data-id="6">
+        <div class="fog"></div>
+        <div class="orb"><span class="icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4m0 12v4m-7-7H2m20 0h-3M6.34 6.34l-2.12-2.12m15.56 15.56l-2.12-2.12M6.34 17.66l-2.12 2.12m15.56-15.56l-2.12 2.12"/><circle cx="12" cy="12" r="4"/></svg></span></div>
+        <div class="label"><span class="badge">6</span><div><h3>Weave</h3><p>Connect the data threads.</p></div></div>
+      </article>
+
+      <article class="station" data-id="7">
+        <div class="fog"></div>
+        <div class="orb"><span class="icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span></div>
+        <div class="label"><span class="badge">7</span><div><h3>Navigate</h3><p>Chart through the chaos.</p></div></div>
+      </article>
+
+      <article class="station" data-id="8">
+        <div class="fog"></div>
+        <div class="orb"><span class="icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg></span></div>
+        <div class="label"><span class="badge">8</span><div><h3>Seek</h3><p>Uncover hidden truths.</p></div></div>
+      </article>
+
+      <article class="station" data-id="9">
+        <div class="fog"></div>
+        <div class="orb"><span class="icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18m-6-6l6 6 6-6"/></svg></span></div>
+        <div class="label"><span class="badge">9</span><div><h3>Forge</h3><p>Shape clarity from noise.</p></div></div>
+      </article>
+
+      <article class="station" data-id="10">
+        <div class="fog"></div>
+        <div class="orb"><span class="icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg></span></div>
+        <div class="label"><span class="badge">10</span><div><h3>Clarity</h3><p>Signal over Noise. Mastered.</p></div></div>
+      </article>
+
+      <div class="panel complete-banner" id="completeBanner">
+        <h2>ALL 10 COLLECTED</h2>
+        <p>你已经穿过信息迷雾，找到了属于自己的 Signal。<br />Your Signal Type: <strong id="signalType">—</strong></p>
+      </div>
+    </section>
+  </main>
+
+  <!-- Station Detail Modal -->
+  <div class="modal-overlay" id="modalOverlay" aria-hidden="true">
+    <div class="noise-grain"></div>
+    <div class="glitch-band"></div>
+    <div class="modal" role="dialog" aria-labelledby="modalTitle" aria-modal="true">
+      <button class="modal-close" id="modalClose" aria-label="Close detail panel">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+      <div class="modal-header">
+        <div class="modal-badge" id="modalBadge"></div>
+        <div>
+          <h2 class="modal-title" id="modalTitle"></h2>
+          <p class="modal-subtitle" id="modalSubtitle"></p>
+        </div>
+      </div>
+      <div class="modal-body">
+        <div class="modal-description" id="modalDescription"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- INFO POPUP (shows on page load) -->
+  <div class="modal-overlay" id="infoPopupOverlay" aria-hidden="true">
+    <div class="noise-grain"></div>
+    <div class="modal" role="dialog" aria-labelledby="infoPopupTitle" aria-modal="true" style="max-width:480px">
+      <button class="modal-close" id="infoPopupClose" aria-label="关闭">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+      <div class="modal-header">
+        <div class="modal-badge" style="border-color:var(--signal-4);color:var(--signal-4)">📢</div>
+        <div>
+          <h2 class="modal-title" id="infoPopupTitle">Signal Hunt 活动信息</h2>
+          <p class="modal-subtitle">Community Day · 实时更新</p>
+        </div>
+      </div>
+      <div class="modal-body">
+        <!-- Schedule Link -->
+        <div class="modal-offer" style="border-color:rgba(125,249,255,.3);background:rgba(125,249,255,.05)">
+          <div class="offer-label" style="color:var(--signal)">📅 活动时间表</div>
+          <div class="offer-text"><a href="https://2026-summer.awscommunityday.cn/schedule/" target="_blank" rel="noopener" id="scheduleLink" style="color:var(--signal);text-decoration:underline">点击查看完整活动安排 →</a></div>
+        </div>
+        <!-- Active Missions -->
+        <div id="infoActiveMissions" style="margin-top:14px">
+          <div style="font-size:10px;font-family:'Share Tech Mono',monospace;letter-spacing:.14em;color:var(--signal-3);text-transform:uppercase;margin-bottom:8px">🎯 当前激活的任务</div>
+          <div id="infoMissionsList" style="font-size:13px;color:rgba(234,246,255,.85);line-height:1.8">
+            <span style="color:var(--muted)">加载中...</span>
+          </div>
+        </div>
+        <!-- My Rewards (if tagId provided) -->
+        <div id="infoRewardsSection" style="margin-top:14px;display:none">
+          <div style="font-size:10px;font-family:'Share Tech Mono',monospace;letter-spacing:.14em;color:var(--signal-4);text-transform:uppercase;margin-bottom:8px">🏆 我的奖励</div>
+          <div id="infoRewardsList" style="font-size:13px;color:rgba(234,246,255,.85);line-height:1.8"></div>
+        </div>
+        <!-- QR Code for redemption -->
+        <div id="infoQrSection" style="margin-top:14px;display:none;text-align:center">
+          <div style="font-size:10px;font-family:'Share Tech Mono',monospace;letter-spacing:.14em;color:var(--signal);text-transform:uppercase;margin-bottom:8px">📱 我的二维码</div>
+          <div id="infoQrCode" style="display:inline-block;padding:12px;background:white;border-radius:8px"></div>
+          <div style="margin-top:6px;font-size:11px;color:var(--muted)">出示给工作人员扫描（打卡/领奖/午餐/Party）</div>
+        </div>
+        <!-- Lottery Section (inside info modal) -->
+        <div id="infoLotterySection" style="margin-top:14px;display:none">
+          <div style="font-size:10px;font-family:'Share Tech Mono',monospace;letter-spacing:.14em;color:var(--signal-2);text-transform:uppercase;margin-bottom:8px">🎲 After Party 抽奖</div>
+          <div id="infoLotteryContent" style="font-size:13px;color:rgba(234,246,255,.85);line-height:1.8"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      'use strict';
+
+      const TOTAL_STATIONS = 10;
+
+      // ===== SPONSOR DATA (展示用) =====
+      const stationData = {
+        1: {
+          title: 'First Signal',
+          subtitle: '噪声探测者 · Noise Detector',
+          sponsor: { name: 'CloudNova AI', tagline: '下一代智能云计算平台，让 AI 触手可及' },
+          description: '欢迎来到 Signal Hunt 的第一站！在这里，你将学会如何从海量信息中识别出第一缕有价值的信号。CloudNova AI 为你提供强大的数据处理能力，帮助你在噪声中找到方向。',
+          offer: '扫码关注 CloudNova AI 公众号，领取 ¥200 云计算体验券 + 免费 AI API 调用额度 1000 次',
+          qr: 'CloudNova AI'
+        },
+        2: {
+          title: 'Pattern',
+          subtitle: '模式发现者 · Pattern Finder',
+          sponsor: { name: 'DataForge Analytics', tagline: '实时数据分析引擎，洞察商业模式' },
+          description: '混沌中隐藏着规律。DataForge Analytics 帮助企业从复杂数据中发现隐藏的模式和趋势，将看似无序的信息转化为可执行的商业洞察。',
+          offer: '现场注册即享 DataForge 专业版 30 天免费试用，附赠《数据驱动决策》电子书',
+          qr: 'DataForge Analytics'
+        },
+        3: {
+          title: 'Insight',
+          subtitle: '洞察引擎 · Insight Engine',
+          sponsor: { name: 'MindBridge Labs', tagline: '认知科学 × 人工智能，重新定义洞察力' },
+          description: '真正的洞察来自于深度理解。MindBridge Labs 结合认知科学与 AI 技术，打造新一代知识管理和洞察发现平台，让每一个想法都能被捕捉和放大。',
+          offer: '参与现场 Demo 体验，赢取 MindBridge Pro 年度会员（价值 ¥1,999）抽奖资格',
+          qr: 'MindBridge Labs'
+        },
+        4: {
+          title: 'Decision',
+          subtitle: '决策者 · Decision Maker',
+          sponsor: { name: 'QuantumLeap Capital', tagline: '量化决策，智慧投资' },
+          description: '在信号与噪声之间做出正确的选择，是每一个决策者的核心能力。QuantumLeap Capital 用量化模型和 AI 辅助决策系统，帮助投资者在不确定性中找到确定性。',
+          offer: '扫码获取《2025 科技投资趋势报告》完整版 PDF + 一对一投资顾问咨询名额',
+          qr: 'QuantumLeap Capital'
+        },
+        5: {
+          title: 'Amplify',
+          subtitle: '信号放大器 · Signal Amplifier',
+          sponsor: { name: 'EchoWave Communications', tagline: '让每一个声音都被听见' },
+          description: '好的信号需要被放大。EchoWave Communications 专注于品牌传播和内容营销，帮助创业者和企业将核心价值传递给目标受众，实现指数级增长。',
+          offer: '现场扫码预约品牌诊断服务（原价 ¥5,000），前 50 名免费',
+          qr: 'EchoWave Communications'
+        },
+        6: {
+          title: 'Weave',
+          subtitle: '数据编织者 · Data Weaver',
+          sponsor: { name: 'NexusGraph', tagline: '知识图谱驱动的企业智能连接平台' },
+          description: '数据的价值在于连接。NexusGraph 通过知识图谱技术，将分散的数据节点编织成有意义的网络，揭示隐藏的关联和机会。',
+          offer: '体验 NexusGraph 知识图谱 Demo，完成互动任务即可获得限量版技术 T 恤',
+          qr: 'NexusGraph'
+        },
+        7: {
+          title: 'Navigate',
+          subtitle: '混沌领航员 · Chaos Navigator',
+          sponsor: { name: 'Pathfinder Robotics', tagline: '自主导航技术，探索未知边界' },
+          description: '在混沌中找到方向需要智慧和勇气。Pathfinder Robotics 研发的自主导航系统，不仅能在物理世界中寻路，更能帮助企业在复杂市场环境中找到最优路径。',
+          offer: '现场观看机器人导航 Demo，参与互动挑战赢取 Pathfinder 迷你机器人套件',
+          qr: 'Pathfinder Robotics'
+        },
+        8: {
+          title: 'Seek',
+          subtitle: '真相探索者 · Truth Seeker',
+          sponsor: { name: 'VeritasChain', tagline: '区块链驱动的可信数据验证网络' },
+          description: '在信息过载的时代，辨别真伪至关重要。VeritasChain 利用区块链技术构建去中心化的数据验证网络，确保每一条信息都可追溯、可验证。',
+          offer: '注册 VeritasChain 测试网账户，获得 500 VRT 测试代币 + 限量 NFT 徽章',
+          qr: 'VeritasChain'
+        },
+        9: {
+          title: 'Forge',
+          subtitle: '清晰锻造者 · Clarity Forge',
+          sponsor: { name: 'CrystalMind Studio', tagline: '设计思维工作坊，锻造清晰思路' },
+          description: '清晰不是天生的，而是锻造出来的。CrystalMind Studio 通过设计思维方法论和创意工作坊，帮助团队将模糊的想法锻造成清晰的产品愿景和执行路线图。',
+          offer: '现场参与 15 分钟迷你工作坊，完成者获赠《设计思维实战手册》+ 工作坊 8 折优惠券',
+          qr: 'CrystalMind Studio'
+        },
+        10: {
+          title: 'Clarity',
+          subtitle: '信号大师 · Signal Master',
+          sponsor: { name: 'Signal Over Noise Foundation', tagline: '致力于提升全球信息素养的非营利组织' },
+          description: '恭喜你完成了所有站点的探索！Signal Over Noise Foundation 致力于帮助人们在信息洪流中保持清醒，做出明智的决策。你已经证明了自己是真正的 Signal Master。',
+          offer: '集齐 10 枚信号，兑换 Signal Master 限量实体徽章 + 活动纪念品大礼包',
+          qr: 'Signal Over Noise'
+        }
+      };
+
+      // ===== STATE =====
+      const state = {
+        unlocked: new Set(),
+        hasPlayedFinalEffect: false
+      };
+
+      const elements = {};
+
+      // Tag currently being viewed; set when progress loads. Used by the
+      // lottery nickname registration flow (POST /lottery/nickname).
+      let currentTagId = null;
+
+      function $(sel) { return document.querySelector(sel); }
+      function $all(sel) { return Array.from(document.querySelectorAll(sel)); }
+
+      // Escape user-supplied values before injecting into innerHTML.
+      function escapeHtml(value) {
+        return String(value == null ? '' : value)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      function cacheElements() {
+        elements.stations = $all('.station');
+        elements.progressDots = $all('.progress-dot');
+        elements.cards = $all('.card');
+        elements.basePath = $('#basePath');
+        elements.pathSegmentsGroup = $('#pathSegments');
+        elements.completeBanner = $('#completeBanner');
+        elements.finalFlash = $('#finalFlash');
+        elements.modalOverlay = $('#modalOverlay');
+        elements.modalClose = $('#modalClose');
+        elements.modalBadge = $('#modalBadge');
+        elements.modalTitle = $('#modalTitle');
+        elements.modalSubtitle = $('#modalSubtitle');
+        elements.modalDescription = $('#modalDescription');
+      }
+
+      // Build 10 independent segments so any subset of stations can light up
+      // (path stays in station order - each segment = edge between station N and N+1)
+      function buildPathSegments() {
+        if (!elements.basePath || !elements.pathSegmentsGroup) return;
+
+        var totalLength = elements.basePath.getTotalLength();
+        var segCount = TOTAL_STATIONS - 1; // 9 edges between 10 stations
+        var segLen = totalLength / segCount;
+        var pathD = elements.basePath.getAttribute('d');
+
+        elements.pathSegments = [];
+        for (var i = 0; i < segCount; i++) {
+          var seg = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+          seg.setAttribute('class', 'path-segment');
+          seg.setAttribute('d', pathD);
+          seg.setAttribute('pathLength', String(segCount));
+          // Draw only the i-th segment: use stroke-dasharray with dash=1, gap=segCount
+          // and offset so that the visible dash sits at index i
+          seg.style.strokeDasharray = '1 ' + segCount;
+          seg.style.strokeDashoffset = String(-i);
+          elements.pathSegmentsGroup.appendChild(seg);
+          elements.pathSegments.push(seg);
+        }
+      }
+
+      function syncUI() {
+        elements.stations.forEach(function(station) {
+          var id = Number(station.dataset.id);
+          station.classList.toggle('unlocked', state.unlocked.has(id));
+        });
+
+        elements.progressDots.forEach(function(dot, i) {
+          dot.classList.toggle('done', state.unlocked.has(i + 1));
+        });
+
+        elements.cards.forEach(function(card, i) {
+          card.classList.toggle('done', state.unlocked.has(i + 1));
+        });
+
+        // Light up segment i if BOTH station (i+1) and station (i+2) are unlocked
+        // (edge between adjacent unlocked stations)
+        if (elements.pathSegments) {
+          elements.pathSegments.forEach(function(seg, i) {
+            var active = state.unlocked.has(i + 1) && state.unlocked.has(i + 2);
+            seg.classList.toggle('active', active);
+          });
+        }
+
+        var done = state.unlocked.size === TOTAL_STATIONS;
+        elements.completeBanner.classList.toggle('show', done);
+
+        if (done) {
+          // Assign a deterministic Signal Type based on tagId
+          var params = new URLSearchParams(window.location.search);
+          var tagId = params.get('tagId') || 'unknown';
+          var types = ['Architect', 'Explorer', 'Builder', 'Strategist', 'Visionary', 'Catalyst', 'Pioneer', 'Synthesizer'];
+          var hash = 0;
+          for (var i = 0; i < tagId.length; i++) { hash = ((hash << 5) - hash) + tagId.charCodeAt(i); hash |= 0; }
+          var typeIndex = Math.abs(hash) % types.length;
+          document.getElementById('signalType').textContent = types[typeIndex];
+        }
+
+        if (done && !state.hasPlayedFinalEffect) {
+          state.hasPlayedFinalEffect = true;
+          triggerFinalEffect();
+        }
+      }
+
+      function unlockStation(id) {
+        var stationId = Number(id);
+        if (Number.isInteger(stationId) && stationId >= 1 && stationId <= TOTAL_STATIONS) {
+          state.unlocked.add(stationId);
+          syncUI();
+        }
+      }
+
+      function unlockNext() {
+        for (var i = 1; i <= TOTAL_STATIONS; i++) {
+          if (!state.unlocked.has(i)) {
+            unlockStation(i);
+            return;
+          }
+        }
+      }
+
+      function triggerFinalEffect() {
+        elements.finalFlash.classList.remove('show');
+        void elements.finalFlash.offsetWidth;
+        elements.finalFlash.classList.add('show');
+        setTimeout(function() {
+          elements.finalFlash.classList.remove('show');
+        }, 1300);
+      }
+
+      function resetAll() {
+        state.unlocked.clear();
+        state.hasPlayedFinalEffect = false;
+        elements.finalFlash.classList.remove('show');
+        syncUI();
+      }
+
+      // ===== MODAL =====
+      function openModal(id) {
+        var data = stationData[id];
+        if (!data) return;
+
+        elements.modalBadge.textContent = id;
+        elements.modalTitle.textContent = data.title;
+        elements.modalSubtitle.textContent = data.subtitle;
+
+        elements.modalDescription.innerHTML = '<p>' + data.description + '</p>';
+
+        elements.modalOverlay.classList.add('show');
+        elements.modalOverlay.setAttribute('aria-hidden', 'false');
+        elements.modalClose.focus();
+      }
+
+      function closeModal() {
+        elements.modalOverlay.classList.remove('show');
+        elements.modalOverlay.setAttribute('aria-hidden', 'true');
+      }
+
+      function handleStationClick(station) {
+        var id = Number(station.dataset.id);
+        if (state.unlocked.has(id)) {
+          openModal(id);
+        }
+        // No click-to-unlock in production — only API check-ins unlock stations
+      }
+
+      // ===== API INTEGRATION =====
+      const API_BASE = 'https://7orrwwprye.execute-api.ap-northeast-1.amazonaws.com';
+
+      // ===== ROLE DETECTION =====
+      const COGNITO_POOL_ID = 'ap-northeast-1_dBdKduSNI';
+      const COGNITO_CLIENT_ID = '43gokealbmen6doviustcfh62c';
+
+      var currentRole = { role: 'participant', jwt: null, stationId: null };
+
+      function detectRole() {
+        return new Promise(function(resolve) {
+          try {
+            var poolData = { UserPoolId: COGNITO_POOL_ID, ClientId: COGNITO_CLIENT_ID };
+            var userPool = new AmazonCognitoIdentity.CognitoUserPool(poolData);
+            var cognitoUser = userPool.getCurrentUser();
+
+            if (!cognitoUser) { resolve({ role: 'participant', jwt: null, stationId: null }); return; }
+
+            cognitoUser.getSession(function(err, session) {
+              if (err || !session || !session.isValid()) {
+                resolve({ role: 'participant', jwt: null, stationId: null });
+                return;
+              }
+
+              var idToken = session.getIdToken();
+              var payload = idToken.decodePayload();
+              var groups = payload['cognito:groups'] || [];
+              var stationId = payload['custom:stationId'] || null;
+              var jwt = idToken.getJwtToken();
+
+              if (groups.includes('staff') || groups.includes('admin')) {
+                resolve({ role: 'staff', jwt: jwt, stationId: null });
+              } else if (groups.includes('exhibitor')) {
+                resolve({ role: 'exhibitor', jwt: jwt, stationId: stationId });
+              } else {
+                resolve({ role: 'participant', jwt: null, stationId: null });
+              }
+            });
+          } catch (e) {
+            console.error('Role detection error:', e);
+            resolve({ role: 'participant', jwt: null, stationId: null });
+          }
+        });
+      }
+
+      // ===== EXHIBITOR UI =====
+      async function renderExhibitorUI(tagId, stationId, jwt) {
+        var missionsList = document.getElementById('infoMissionsList');
+        var rewardsSection = document.getElementById('infoRewardsSection');
+        var qrSection = document.getElementById('infoQrSection');
+        var activeMissions = document.getElementById('infoActiveMissions');
+
+        // Hide participant-specific sections
+        if (rewardsSection) rewardsSection.style.display = 'none';
+        if (qrSection) qrSection.style.display = 'none';
+
+        // Change the missions section to exhibitor UI
+        var titleEl = activeMissions.querySelector('div:first-child');
+        if (titleEl) titleEl.innerHTML = '🏪 展商打卡模式 — 站点 ' + stationId;
+
+        missionsList.innerHTML = '<div style="text-align:center;padding:16px 0">' +
+          '<div style="font-size:14px;color:var(--text);margin-bottom:12px">为参与者 <strong style="color:var(--signal)">' + tagId + '</strong> 打卡</div>' +
+          '<div style="font-size:12px;color:var(--muted);margin-bottom:16px">站点 ' + stationId + ' · 扫码打卡（Plan B）</div>' +
+          '<button onclick="doExhibitorCheckin(\'' + tagId + '\', \'' + stationId + '\')" style="padding:12px 24px;background:linear-gradient(135deg,rgba(52,211,153,.2),rgba(52,211,153,.1));border:1px solid var(--signal-3);color:var(--signal-3);border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif">确认打卡</button>' +
+          '<div id="exhibitor-result" style="margin-top:12px;font-size:13px"></div>' +
+          '</div>';
+      }
+
+      async function doExhibitorCheckin(tagId, stationId) {
+        var resultEl = document.getElementById('exhibitor-result');
+        resultEl.innerHTML = '<span style="color:var(--muted)">处理中...</span>';
+
+        try {
+          var scannerId = 'station-' + stationId;
+          var res = await fetch(API_BASE + '/checkin', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tagId: tagId, scannerId: scannerId })
+          });
+          var data = await res.json();
+
+          if (data.success) {
+            resultEl.innerHTML = '<span style="color:var(--signal-3)">✓ 打卡成功！站点 ' + data.stationId + '</span>';
+            // Also update the map
+            if (data.stationId) {
+              state.unlocked.add(data.stationId);
+              syncUI();
+            }
+          } else if (data.error === 'cooldown_active') {
+            resultEl.innerHTML = '<span style="color:var(--signal-5)">⚠ 冷却中，请等待 ' + data.remainingSeconds + ' 秒</span>';
+          } else {
+            resultEl.innerHTML = '<span style="color:#ff7eb3">✗ ' + (data.message || data.error || '打卡失败') + '</span>';
+          }
+        } catch (e) {
+          resultEl.innerHTML = '<span style="color:#ff7eb3">✗ 网络错误</span>';
+        }
+      }
+
+      // ===== STAFF UI =====
+      async function renderStaffUI(tagId, jwt) {
+        var missionsList = document.getElementById('infoMissionsList');
+        var rewardsSection = document.getElementById('infoRewardsSection');
+        var qrSection = document.getElementById('infoQrSection');
+        var activeMissions = document.getElementById('infoActiveMissions');
+
+        // Hide participant-specific sections
+        if (qrSection) qrSection.style.display = 'none';
+
+        // Change title
+        var titleEl = activeMissions.querySelector('div:first-child');
+        if (titleEl) titleEl.innerHTML = '👤 工作人员验证模式';
+
+        missionsList.innerHTML = '<div style="text-align:center;padding:8px 0">' +
+          '<div style="font-size:14px;color:var(--text);margin-bottom:16px">参与者: <strong style="color:var(--signal)">' + tagId + '</strong></div>' +
+          '<div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">' +
+          '<button onclick="doStaffVerify(\'' + tagId + '\', \'lunch\', this)" style="padding:10px 20px;background:linear-gradient(135deg,rgba(251,191,36,.2),rgba(251,191,36,.1));border:1px solid var(--signal-5);color:var(--signal-5);border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif">🍽 验证午餐</button>' +
+          '<button onclick="doStaffVerify(\'' + tagId + '\', \'party\', this)" style="padding:10px 20px;background:linear-gradient(135deg,rgba(167,139,250,.2),rgba(167,139,250,.1));border:1px solid var(--signal-2);color:var(--signal-2);border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif">🎉 验证 Party</button>' +
+          '</div>' +
+          '<div id="staff-result" style="margin-top:12px;font-size:13px"></div>' +
+          '</div>';
+
+        // Also show rewards for redemption
+        if (rewardsSection) {
+          rewardsSection.style.display = 'block';
+          loadRewardsForStaff(tagId, jwt);
+        }
+      }
+
+      async function loadRewardsForStaff(tagId, jwt) {
+        var listEl = document.getElementById('infoRewardsList');
+        try {
+          var res = await fetch(API_BASE + '/checkin/' + encodeURIComponent(tagId) + '/rewards');
+          if (!res.ok) { listEl.innerHTML = '<span style="color:var(--muted)">加载失败</span>'; return; }
+          var data = await res.json();
+          if (!data.rewards || data.rewards.length === 0) {
+            listEl.innerHTML = '<span style="color:var(--muted)">暂无奖励</span>';
+            return;
+          }
+
+          var unredeemed = data.rewards.filter(function(r) { return !r.redeemed; });
+          var redeemed = data.rewards.filter(function(r) { return r.redeemed; });
+
+          var html = '';
+          if (unredeemed.length > 0) {
+            html += '<div style="margin-bottom:6px;font-size:11px;color:var(--signal-3);font-weight:600">待领取 (' + unredeemed.length + ')</div>';
+            unredeemed.forEach(function(r) {
+              html += '<div style="padding:6px 0;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(125,249,255,.08)">' +
+                '<span style="font-size:12px">' + getRewardLabel(r) + '</span>' +
+                '<button onclick="doStaffRedeem(\'' + tagId + '\', \'' + r.rewardKey + '\', this)" style="padding:4px 10px;background:rgba(52,211,153,.1);border:1px solid var(--signal-3);color:var(--signal-3);border-radius:4px;font-size:11px;cursor:pointer">领奖</button>' +
+                '</div>';
+            });
+          }
+          if (redeemed.length > 0) {
+            html += '<div style="margin-top:8px;margin-bottom:6px;font-size:11px;color:var(--muted);font-weight:600">已领取 (' + redeemed.length + ')</div>';
+            redeemed.forEach(function(r) {
+              html += '<div style="padding:4px 0;font-size:12px;color:var(--muted);opacity:0.6">' + getRewardLabel(r) + ' ✅</div>';
+            });
+          }
+          listEl.innerHTML = html;
+        } catch (e) {
+          listEl.innerHTML = '<span style="color:var(--muted)">加载失败</span>';
+        }
+      }
+
+      function getRewardLabel(r) {
+        if (r.type === 'stamp_rally') return '🏆 集邮完成';
+        if (r.type === 'combo') return '🎁 ' + r.name;
+        if (r.type === 'early_bird') return '🐦 早鸟 #' + r.position;
+        if (r.type === 'milestone') return '🎯 #' + r.visitorNumber + ' ' + (r.missionName || '');
+        if (r.type === 'mission_winner') return '🎰 ' + (r.missionName || '中奖');
+        return '🎁 奖励';
+      }
+
+      async function doStaffVerify(tagId, type, btn) {
+        var resultEl = document.getElementById('staff-result');
+        btn.disabled = true;
+        btn.style.opacity = '0.5';
+        resultEl.innerHTML = '<span style="color:var(--muted)">处理中...</span>';
+
+        try {
+          var res = await fetch(API_BASE + '/verify/' + type, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + currentRole.jwt },
+            body: JSON.stringify({ tagId: tagId })
+          });
+          var data = await res.json();
+
+          if (data.success) {
+            resultEl.innerHTML = '<span style="color:var(--signal-3)">✓ ' + (type === 'lunch' ? '午餐' : 'Party') + ' 验证成功！</span>';
+            btn.textContent = '✓ 已验证';
+          } else if (data.error === 'already_verified') {
+            resultEl.innerHTML = '<span style="color:var(--signal-5)">⚠ 已验证过，无需重复操作</span>';
+            btn.textContent = '已验证';
+          } else {
+            resultEl.innerHTML = '<span style="color:#ff7eb3">✗ ' + (data.message || '验证失败') + '</span>';
+            btn.disabled = false;
+            btn.style.opacity = '1';
+          }
+        } catch (e) {
+          resultEl.innerHTML = '<span style="color:#ff7eb3">✗ 网络错误</span>';
+          btn.disabled = false;
+          btn.style.opacity = '1';
+        }
+      }
+
+      async function doStaffRedeem(tagId, rewardKey, btn) {
+        btn.disabled = true;
+        btn.textContent = '...';
+
+        try {
+          var res = await fetch(API_BASE + '/rewards/redeem', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + currentRole.jwt },
+            body: JSON.stringify({ tagId: tagId, rewardKey: rewardKey })
+          });
+          var data = await res.json();
+
+          if (data.status === 'redeemed' || data.status === 'already_redeemed') {
+            btn.textContent = '✓';
+            btn.style.borderColor = 'var(--muted)';
+            btn.style.color = 'var(--muted)';
+          } else {
+            btn.textContent = '✗';
+            btn.disabled = false;
+          }
+        } catch (e) {
+          btn.textContent = '✗';
+          btn.disabled = false;
+        }
+      }
+
+      // Expose role-based functions for onclick handlers
+      window.doExhibitorCheckin = doExhibitorCheckin;
+      window.doStaffVerify = doStaffVerify;
+      window.doStaffRedeem = doStaffRedeem;
+
+      async function apiCheckin(tagId, scannerId) {
+        try {
+          var res = await fetch(API_BASE + '/checkin', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tagId: tagId, scannerId: scannerId })
+          });
+          var data = await res.json();
+          return data;
+        } catch (e) {
+          console.error('Check-in API error:', e);
+          return null;
+        }
+      }
+
+      async function apiGetProgress(tagId) {
+        try {
+          var res = await fetch(API_BASE + '/checkin/' + encodeURIComponent(tagId));
+          if (!res.ok) return null;
+          var data = await res.json();
+          return data;
+        } catch (e) {
+          console.error('Progress API error:', e);
+          return null;
+        }
+      }
+
+      // ===== AFTER PARTY LOTTERY =====
+      // NOTE: escapeHtml, reasonToZh, and renderLotteryPanel below are mirrored
+      // by the canonical ES module web/lottery/panel-render.mjs, which is unit-
+      // tested (Property 20: lottery panel render invariants). Keep the two copies
+      // in sync — any change here must be reflected there and vice versa.
+
+      // Map a machine-readable lottery reason to a Simplified-Chinese message.
+      function reasonToZh(reason, stationsRemaining) {
+        if (reason === 'incomplete_stations')
+          return '很遗憾，您未完成全部站点打卡，无法参加抽奖。欢迎继续享受 After Party！';
+        if (reason === 'after_party_checkin_required')
+          return '请完成 After Party 入场打卡，即可参加抽奖';
+        if (reason === 'incomplete_stations_and_no_after_party_checkin')
+          return '很遗憾，您未完成全部站点打卡，无法参加抽奖。欢迎继续享受 After Party！';
+        return '暂不符合抽奖资格';
+      }
+
+      // Conditionally render the lottery panel based on the progress response.
+      // progress is the JSON returned by GET /checkin/{tagId}.
+      function renderLotteryPanel(progress) {
+        var section = document.getElementById('infoLotterySection');
+        var content = document.getElementById('infoLotteryContent');
+        var panel = document.getElementById('lottery-panel');
+        // Hide the standalone panel (no longer used)
+        if (panel) { panel.hidden = true; panel.innerHTML = ''; }
+        if (!section || !content) return;
+
+        // Before the time gate: hide lottery section entirely
+        if (!progress || !('lotteryEligible' in progress)) {
+          section.style.display = 'none';
+          content.innerHTML = '';
+          return;
+        }
+
+        section.style.display = 'block';
+
+        // Already registered
+        if (progress.nickname) {
+          content.innerHTML =
+            '<div style="padding:10px 14px;border:1px solid rgba(52,211,153,.3);border-radius:10px;background:rgba(52,211,153,.06)">' +
+              '<span style="color:var(--signal-3);font-weight:600">✓ 已成功登记参与抽奖</span><br>' +
+              '<span style="color:var(--signal);font-family:\'Share Tech Mono\',monospace">' + escapeHtml(progress.nickname) + '</span>' +
+              '<div style="margin-top:6px;font-size:11px;color:var(--muted)">请等待主持人进行抽奖，祝您好运！</div>' +
+            '</div>';
+          return;
+        }
+
+        // Eligible, show nickname input
+        if (progress.lotteryEligible) {
+          content.innerHTML =
+            '<div style="padding:10px 14px;border:1px solid rgba(125,249,255,.25);border-radius:10px;background:rgba(125,249,255,.04)">' +
+              '<div style="margin-bottom:8px;color:rgba(234,246,255,.9)">🎉 恭喜！您符合抽奖条件，请输入昵称：</div>' +
+              '<form id="nickname-form" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">' +
+                '<input id="nickname-input" type="text" maxlength="20" required autocomplete="off" placeholder="1-20 个字符" ' +
+                  'style="flex:1;min-width:0;padding:8px 12px;border-radius:8px;border:1px solid rgba(125,249,255,.4);background:rgba(125,249,255,.06);color:var(--text);font-size:14px" />' +
+                '<button type="submit" style="padding:8px 16px;border-radius:8px;border:1px solid rgba(125,249,255,.5);background:rgba(125,249,255,.1);color:var(--signal);cursor:pointer;font-size:13px">登记</button>' +
+              '</form>' +
+              '<p id="nickname-error" style="color:var(--signal-5);font-size:11px;margin-top:6px;display:none"></p>' +
+            '</div>';
+          var form = document.getElementById('nickname-form');
+          if (form) form.addEventListener('submit', onNicknameSubmit);
+          return;
+        }
+
+        // Not eligible
+        content.innerHTML =
+          '<div style="padding:10px 14px;border:1px solid rgba(248,113,113,.2);border-radius:10px;background:rgba(248,113,113,.04)">' +
+            '<span style="color:var(--signal-4)">' + escapeHtml(reasonToZh(progress.lotteryReason, progress.stationsRemaining)) + '</span>' +
+          '</div>';
+      }
+
+      // Show an inline error in the nickname form (Simplified Chinese, Req 10.7).
+      function showNicknameError(message) {
+        var errEl = document.getElementById('nickname-error');
+        if (!errEl) return;
+        errEl.textContent = message;
+        errEl.style.display = 'block';
+      }
+
+      // Handle nickname registration form submission (Req 10.1, 10.5, 10.6, 10.7).
+      // Issues POST /lottery/nickname { tagId, nickname } and maps the response
+      // status + error code to an inline Simplified-Chinese message.
+      async function onNicknameSubmit(ev) {
+        if (ev && typeof ev.preventDefault === 'function') ev.preventDefault();
+
+        var input = document.getElementById('nickname-input');
+        var errEl = document.getElementById('nickname-error');
+        if (!input) return;
+
+        // Clear any previous error at the start of each submit.
+        if (errEl) errEl.hidden = true;
+
+        var nickname = (input.value || '').trim();
+
+        // Client-side validation: trimmed value must be 1-20 characters (Req 10.1).
+        if (nickname.length < 1 || nickname.length > 20) {
+          showNicknameError('昵称格式无效（1-20 个字符，前后不能有空白）');
+          return;
+        }
+
+        var resp;
+        try {
+          resp = await fetch(API_BASE + '/lottery/nickname', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tagId: currentTagId, nickname: nickname })
+          });
+        } catch (e) {
+          // Network error → generic retry message (Req 10.7).
+          console.error('Nickname registration network error:', e);
+          showNicknameError('登记失败，请稍后重试');
+          return;
+        }
+
+        // Best-effort parse of the JSON body to read the error code.
+        var body = null;
+        try {
+          body = await resp.json();
+        } catch (e) {
+          body = null;
+        }
+        var code = body && body.error;
+
+        // Success → re-fetch progress so the registered-state view is shown.
+        if (resp.status === 200) {
+          loadProgressFromAPI(currentTagId);
+          return;
+        }
+
+        if (resp.status === 409) {
+          if (code === 'already_registered') {
+            showNicknameError('您已登记过昵称');
+          } else {
+            // nickname_taken (or any other conflict) → preserve input, allow resubmit (Req 10.5).
+            showNicknameError('昵称已被使用，请换一个');
+          }
+          return;
+        }
+
+        if (resp.status === 400) {
+          // invalid_field or missing_field (Req 10.6).
+          showNicknameError('昵称格式无效（1-20 个字符，前后不能有空白）');
+          return;
+        }
+
+        if (resp.status === 403) {
+          if (code === 'lottery_not_open') {
+            showNicknameError('抽奖尚未开放');
+          } else {
+            // not_eligible (or any other forbidden reason).
+            showNicknameError('当前不符合抽奖登记条件');
+          }
+          return;
+        }
+
+        // Network / 5xx / unexpected status → generic retry message.
+        showNicknameError('登记失败，请稍后重试');
+      }
+
+      async function loadProgressFromAPI(tagId) {
+        var hint = document.getElementById('statusHint');
+        hint.textContent = '正在加载进度...';
+        hint.style.color = 'var(--signal)';
+
+        var data = await apiGetProgress(tagId);
+        if (!data) {
+          hint.textContent = '加载失败，请检查 Tag ID 是否正确';
+          hint.style.color = '#ff7eb3';
+          return;
+        }
+
+        // Track the tag being viewed so the lottery registration flow can use it.
+        currentTagId = tagId;
+
+        // Reset and apply progress from API
+        state.unlocked.clear();
+        state.hasPlayedFinalEffect = false;
+
+        if (data.stations && data.stations.length > 0) {
+          data.stations.forEach(function(s) {
+            state.unlocked.add(s.stationId);
+          });
+        }
+
+        syncUI();
+
+        var statusText = data.totalCheckins + '/10 站已完成';
+        if (data.completed) {
+          statusText = '🎉 全部完成！';
+          if (data.rewardCode) {
+            statusText += ' 奖励码: ' + data.rewardCode;
+          }
+        }
+        hint.textContent = statusText;
+        hint.style.color = data.completed ? 'var(--signal-3)' : 'var(--signal)';
+
+        // Render the After Party lottery panel from the progress response.
+        renderLotteryPanel(data);
+
+        // Also load rewards
+        loadRewardsFromAPI(tagId);
+      }
+
+      async function loadRewardsFromAPI(tagId) {
+        try {
+          var res = await fetch(API_BASE + '/checkin/' + encodeURIComponent(tagId) + '/rewards');
+          if (!res.ok) return;
+          var data = await res.json();
+          if (data.rewards && data.rewards.length > 0) {
+            var hint = document.getElementById('statusHint');
+            var rewardText = '\n🎉 你的奖励:\n';
+            data.rewards.forEach(function(r, i) {
+              rewardText += '\n';
+              if (r.type === 'stamp_rally') {
+                rewardText += '🏆 集邮完成！请到服务台出示二维码领取纪念品';
+              } else if (r.type === 'combo') {
+                rewardText += '🎁 组合奖励「' + r.name + '」— ' + (r.reward || '');
+              } else if (r.type === 'early_bird') {
+                rewardText += '🐦 早鸟奖 #' + r.position + '「' + (r.missionName || '') + '」';
+              } else if (r.type === 'milestone') {
+                var stationInfo = r.stationId ? '站点 ' + r.stationId : '';
+                rewardText += '🎯 第 ' + r.visitorNumber + ' 位幸运访客！活动「' + (r.missionName || '') + '」' + (stationInfo ? '— 请到' + stationInfo + '领奖' : '') + (r.prizeDescription ? ' ' + r.prizeDescription : '');
+              } else if (r.type === 'mission_winner') {
+                rewardText += '🎰 中奖！活动「' + (r.missionName || '') + '」' + (r.prizeDescription ? '— 奖品: ' + r.prizeDescription : '');
+              }
+            });
+            hint.textContent += rewardText;
+            hint.style.whiteSpace = 'pre-line';
+          }
+        } catch (e) {
+          console.error('Rewards fetch error:', e);
+        }
+      }
+
+      async function handleCheckinFromURL(tagId, scannerId) {
+        var hint = document.getElementById('statusHint');
+        hint.textContent = '正在打卡...';
+        hint.style.color = 'var(--signal)';
+
+        var data = await apiCheckin(tagId, scannerId);
+        if (!data) {
+          hint.textContent = '打卡失败，请重试';
+          hint.style.color = '#ff7eb3';
+          return;
+        }
+
+        if (data.error === 'cooldown_active') {
+          hint.textContent = '冷却中，请等待 ' + data.remainingSeconds + ' 秒';
+          hint.style.color = 'var(--signal-4)';
+        } else if (data.success) {
+          hint.textContent = '✓ 打卡成功！Station ' + data.stationId;
+          hint.style.color = 'var(--signal-3)';
+          state.unlocked.add(data.stationId);
+          syncUI();
+        } else if (data.error === 'not_found') {
+          hint.textContent = '未识别的 NFC Tag';
+          hint.style.color = '#ff7eb3';
+        } else {
+          hint.textContent = '错误: ' + (data.message || JSON.stringify(data));
+          hint.style.color = '#ff7eb3';
+        }
+
+        // Also load full progress
+        setTimeout(function() { loadProgressFromAPI(tagId); }, 500);
+
+        // Also load rewards
+        setTimeout(function() { loadRewardsFromAPI(tagId); }, 800);
+      }
+
+      function applyUrlStationParam() {
+        var params = new URLSearchParams(window.location.search);
+        var tagId = params.get('tagId');
+        var scannerId = params.get('scannerId');
+        var station = Number(params.get('station'));
+
+        // If both tagId and scannerId provided, do a real check-in
+        if (tagId && scannerId) {
+          handleCheckinFromURL(tagId, scannerId);
+        }
+        // If only tagId, load progress
+        else if (tagId) {
+          loadProgressFromAPI(tagId);
+        }
+        // Legacy: ?station=N for local simulation
+        else if (station >= 1 && station <= TOTAL_STATIONS) {
+          unlockStation(station);
+        } else {
+          syncUI();
+        }
+      }
+
+      function bindEvents() {
+        elements.stations.forEach(function(station) {
+          station.addEventListener('click', function() {
+            handleStationClick(station);
+          });
+        });
+
+        elements.modalClose.addEventListener('click', closeModal);
+        elements.modalOverlay.addEventListener('click', function(e) {
+          if (e.target === elements.modalOverlay) closeModal();
+        });
+
+        document.addEventListener('keydown', function(e) {
+          if (e.key === 'Escape' && elements.modalOverlay.classList.contains('show')) {
+            closeModal();
+          }
+        });
+
+        // Expose for external use (NFC integration)
+        window.unlockStation = unlockStation;
+        window.unlockNext = unlockNext;
+        window.resetAll = resetAll;
+        window.openStationDetail = openModal;
+        window.loadProgress = loadProgressFromAPI;
+        window.checkin = apiCheckin;
+      }
+
+      function init() {
+        cacheElements();
+        buildPathSegments();
+        buildPathGapMask();
+        positionStationsOnPath();
+
+        bindEvents();
+        applyUrlStationParam();
+        showInfoPopup();
+      }
+
+      // ===== INFO POPUP =====
+      async function showInfoPopup() {
+        var overlay = document.getElementById('infoPopupOverlay');
+        var closeBtn = document.getElementById('infoPopupClose');
+
+        // Detect role
+        currentRole = await detectRole();
+
+        overlay.classList.add('show');
+        overlay.setAttribute('aria-hidden', 'false');
+
+        closeBtn.addEventListener('click', closeInfoPopup);
+        overlay.addEventListener('click', function(e) {
+          if (e.target === overlay) closeInfoPopup();
+        });
+
+        var params = new URLSearchParams(window.location.search);
+        var tagId = params.get('tagId');
+
+        // Staff/admin: redirect to staff.html
+        if ((currentRole.role === 'staff') && tagId) {
+          window.location.href = '/staff.html?tagId=' + encodeURIComponent(tagId);
+          return;
+        }
+
+        if (currentRole.role === 'exhibitor' && tagId) {
+          window.location.href = '/exhibitor.html?tagId=' + encodeURIComponent(tagId);
+          return;
+        }
+        // Default participant view
+        loadActiveMissionsForPopup();
+        if (tagId) {
+          loadRewardsForPopup(tagId);
+          // Always show QR code for this tagId
+          showQrCode(tagId);
+        }
+      }
+
+      function showQrCode(tagId) {
+        try {
+          var qrSection = document.getElementById('infoQrSection');
+          qrSection.style.display = 'block';
+          var redeemUrl = window.location.origin + '/signal_hunt.html?tagId=' + encodeURIComponent(tagId);
+          var qr = qrcode(0, 'M');
+          qr.addData(redeemUrl);
+          qr.make();
+          document.getElementById('infoQrCode').innerHTML = qr.createImgTag(4, 0);
+        } catch (e) {
+          console.error('QR code generation error:', e);
+        }
+      }
+
+      function closeInfoPopup() {
+        var overlay = document.getElementById('infoPopupOverlay');
+        overlay.classList.remove('show');
+        overlay.setAttribute('aria-hidden', 'true');
+      }
+
+      async function loadActiveMissionsForPopup() {
+        var listEl = document.getElementById('infoMissionsList');
+        try {
+          var res = await fetch(API_BASE + '/missions/active');
+          if (!res.ok) {
+            listEl.innerHTML = '<span style="color:var(--muted)">暂无活跃任务</span>';
+            return;
+          }
+          var data = await res.json();
+          var missions = data.missions || data || [];
+          var active = missions; // Already filtered by API
+
+          if (active.length === 0) {
+            listEl.innerHTML = '<span style="color:var(--muted)">当前没有进行中的任务</span>';
+            return;
+          }
+
+          var typeNames = { numbered_visit: '幸运访客', lucky_draw: '幸运抽奖', early_bird: '早鸟奖励', last_call: '末位奖励' };
+          listEl.innerHTML = active.map(function(m) {
+            var typeName = typeNames[m.type] || m.type;
+            var stationText = m.stationId ? '站点 ' + m.stationId : '所有站点';
+            var endTime = m.endTime ? new Date(m.endTime).toLocaleTimeString('zh-CN', {hour:'2-digit', minute:'2-digit'}) : '';
+            return '<div style="padding:4px 0;border-bottom:1px solid rgba(125,249,255,.08)">' +
+              '<span style="color:var(--signal-3)">●</span> ' +
+              '<strong>' + (m.name || typeName) + '</strong>' +
+              ' <span style="color:var(--muted);font-size:11px">(' + typeName + ' · ' + stationText + (endTime ? ' · 截止 ' + endTime : '') + ')</span>' +
+              '</div>';
+          }).join('');
+        } catch (e) {
+          listEl.innerHTML = '<span style="color:var(--muted)">加载失败</span>';
+        }
+      }
+
+      function renderRewardItem(r, isRedeemed) {
+        var style = isRedeemed ? 'padding:4px 0;opacity:0.6;text-decoration:line-through' : 'padding:4px 0';
+        var badge = isRedeemed ? ' <span style="font-size:10px;color:var(--muted);text-decoration:none;display:inline-block">✅ 已领取</span>' : '';
+        var text = '';
+
+        if (r.type === 'stamp_rally') {
+          text = '🏆 集邮完成！请到服务台出示二维码领取纪念品';
+        } else if (r.type === 'combo') {
+          text = '🎁 组合「' + r.name + '」— ' + (r.reward || '');
+        } else if (r.type === 'early_bird') {
+          text = '🐦 早鸟 #' + r.position + '「' + (r.missionName || '') + '」';
+        } else if (r.type === 'milestone') {
+          var stationInfo = r.stationId ? '站点 ' + r.stationId : '';
+          var prizeInfo = r.prizeDescription ? ' — ' + r.prizeDescription : '';
+          text = '🎯 第 ' + r.visitorNumber + ' 位幸运访客！活动「' + (r.missionName || '') + '」' + (stationInfo ? '请到<strong style="color:var(--signal)">' + stationInfo + '</strong>领奖' : '') + prizeInfo;
+        } else if (r.type === 'mission_winner') {
+          text = '🎰 中奖！「' + (r.missionName || '') + '」' + (r.prizeDescription ? '奖品: ' + r.prizeDescription : '');
+        }
+
+        return '<div style="' + style + '">' + text + badge + '</div>';
+      }
+
+      async function loadRewardsForPopup(tagId) {
+        var section = document.getElementById('infoRewardsSection');
+        var listEl = document.getElementById('infoRewardsList');
+        try {
+          var res = await fetch(API_BASE + '/checkin/' + encodeURIComponent(tagId) + '/rewards');
+          if (!res.ok) return;
+          var data = await res.json();
+          if (!data.rewards || data.rewards.length === 0) {
+            section.style.display = 'block';
+            listEl.innerHTML = '<span style="color:var(--muted)">暂无奖励，继续打卡吧！</span>';
+            return;
+          }
+
+          section.style.display = 'block';
+
+          // Separate redeemed and unredeemed
+          var unredeemed = data.rewards.filter(function(r) { return !r.redeemed; });
+          var redeemed = data.rewards.filter(function(r) { return r.redeemed; });
+
+          var html = '';
+
+          if (unredeemed.length > 0) {
+            html += '<div style="margin-bottom:8px;font-size:11px;color:var(--signal-3);font-weight:600">待领取 (' + unredeemed.length + ')</div>';
+            html += unredeemed.map(function(r) { return renderRewardItem(r, false); }).join('');
+          }
+
+          if (redeemed.length > 0) {
+            html += '<div style="margin-top:10px;margin-bottom:8px;font-size:11px;color:var(--muted);font-weight:600">已领取 (' + redeemed.length + ')</div>';
+            html += redeemed.map(function(r) { return renderRewardItem(r, true); }).join('');
+          }
+
+          listEl.innerHTML = html;
+        } catch (e) {
+          // Non-fatal
+        }
+      }
+
+      // Create mask circles at each station point to hide the dashed line there
+      function buildPathGapMask() {
+        var basePath = elements.basePath;
+        var gapsGroup = document.getElementById('stationGaps');
+        if (!basePath || !gapsGroup) return;
+
+        var totalLength = basePath.getTotalLength();
+        var GAP_RADIUS = 52; // radius in SVG units to hide around each station
+
+        for (var i = 0; i < TOTAL_STATIONS; i++) {
+          var t = i / (TOTAL_STATIONS - 1);
+          var point = basePath.getPointAtLength(t * totalLength);
+          var circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+          circle.setAttribute('cx', point.x);
+          circle.setAttribute('cy', point.y);
+          circle.setAttribute('r', GAP_RADIUS);
+          circle.setAttribute('fill', 'black');
+          gapsGroup.appendChild(circle);
+        }
+      }
+
+      // Position stations precisely on the SVG path
+      function positionStationsOnPath() {
+        var basePath = elements.basePath;
+        if (!basePath) return;
+
+        var totalLength = basePath.getTotalLength();
+        var mapEl = document.querySelector('.map');
+        if (!mapEl) return;
+
+        var mapRect = mapEl.getBoundingClientRect();
+
+        elements.stations.forEach(function(station) {
+          var id = Number(station.dataset.id);
+          var t = (id - 1) / (TOTAL_STATIONS - 1);
+          var point = basePath.getPointAtLength(t * totalLength);
+
+          // Convert SVG coords to pixel position within map
+          var targetX = (point.x / 1000) * mapRect.width;
+          var targetY = (point.y / 800) * mapRect.height;
+
+          // We want the ORB center to be at the path point.
+          // Station uses transform: translate(-50%, -50%), so its top-left corner
+          // is at (targetX - stationW/2, targetY - stationH/2).
+          // The orb is at the top of the station, so its center is at:
+          //   orbCenterX = stationLeft + orbWidth/2 = targetX - stationW/2 + orbW/2
+          //   orbCenterY = stationTop + orbHeight/2 = targetY - stationH/2 + orbH/2
+          // We need orbCenter to equal target, so we offset:
+          //   adjustX = stationW/2 - orbW/2
+          //   adjustY = stationH/2 - orbH/2
+          // Apply this by shifting the left/top percentage
+
+          var orb = station.querySelector('.orb');
+          var stationW = station.offsetWidth;
+          var stationH = station.offsetHeight;
+          var orbW = orb.offsetWidth;
+          var orbH = orb.offsetHeight;
+
+          var adjustX = (stationW / 2 - orbW / 2);
+          var adjustY = (stationH / 2 - orbH / 2);
+
+          var finalX = targetX + adjustX;
+          var finalY = targetY + adjustY;
+
+          station.style.left = (finalX / mapRect.width * 100) + '%';
+          station.style.top = (finalY / mapRect.height * 100) + '%';
+        });
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+      } else {
+        init();
+      }
+    })();
+  </script>
+</body>
+</html>

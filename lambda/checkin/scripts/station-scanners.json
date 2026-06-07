@@ -1,0 +1,12 @@
+[
+  { "scannerId": "station-1", "stationId": 1 },
+  { "scannerId": "station-2", "stationId": 2 },
+  { "scannerId": "station-3", "stationId": 3 },
+  { "scannerId": "station-4", "stationId": 4 },
+  { "scannerId": "station-5", "stationId": 5 },
+  { "scannerId": "station-6", "stationId": 6 },
+  { "scannerId": "station-7", "stationId": 7 },
+  { "scannerId": "station-8", "stationId": 8 },
+  { "scannerId": "station-9", "stationId": 9 },
+  { "scannerId": "station-10", "stationId": 10 }
+]

@@ -1,0 +1,2144 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin | Signal Hunt</title>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+  <script src="https://unpkg.com/amazon-cognito-identity-js@6/dist/amazon-cognito-identity.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #050914;
+      --panel: rgba(13, 25, 50, 0.7);
+      --panel-border: rgba(125, 249, 255, 0.12);
+      --line: rgba(125, 249, 255, 0.08);
+      --signal: #7df9ff;
+      --signal-2: #a78bfa;
+      --signal-3: #34d399;
+      --signal-4: #f472b6;
+      --signal-5: #fbbf24;
+      --signal-6: #60a5fa;
+      --signal-7: #f87171;
+      --signal-8: #4ade80;
+      --signal-9: #e879f9;
+      --signal-10: #fb923c;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --overlay: rgba(5, 9, 20, 0.85);
+      --danger: #f87171;
+      --success: #34d399;
+      --glow: 0 0 20px rgba(125, 249, 255, 0.15);
+      --glow-strong: 0 0 30px rgba(125, 249, 255, 0.3);
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse at 20% 50%, rgba(125, 249, 255, 0.03) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 20%, rgba(167, 139, 250, 0.03) 0%, transparent 50%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    #app { position: relative; z-index: 1; }
+
+    /* ===== LOGIN VIEW ===== */
+    #login-view {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 1rem;
+    }
+
+    .login-card {
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: 16px;
+      padding: 2.5rem;
+      width: 100%;
+      max-width: 400px;
+      backdrop-filter: blur(20px);
+      box-shadow: var(--glow);
+    }
+
+    .login-card h1 {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 1.5rem;
+      color: var(--signal);
+      text-align: center;
+      margin-bottom: 0.5rem;
+      text-shadow: 0 0 10px rgba(125, 249, 255, 0.4);
+    }
+
+    .login-card .subtitle {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.85rem;
+      margin-bottom: 2rem;
+    }
+
+    .form-group {
+      margin-bottom: 1.25rem;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      margin-bottom: 0.4rem;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 0.7rem 1rem;
+      background: rgba(5, 9, 20, 0.6);
+      border: 1px solid var(--panel-border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: 0.9rem;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--signal);
+      box-shadow: 0 0 0 3px rgba(125, 249, 255, 0.1);
+    }
+
+    input::placeholder { color: var(--muted); }
+
+    select {
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0.75rem center;
+      padding-right: 2.5rem;
+    }
+
+    /* ===== BUTTONS ===== */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.6rem 1.2rem;
+      border: none;
+      border-radius: 8px;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, rgba(125, 249, 255, 0.2), rgba(125, 249, 255, 0.1));
+      border: 1px solid var(--signal);
+      color: var(--signal);
+    }
+
+    .btn-primary:hover {
+      background: linear-gradient(135deg, rgba(125, 249, 255, 0.3), rgba(125, 249, 255, 0.15));
+      box-shadow: var(--glow);
+    }
+
+    .btn-ghost {
+      background: transparent;
+      border: 1px solid var(--panel-border);
+      color: var(--muted);
+    }
+
+    .btn-ghost:hover {
+      border-color: var(--signal);
+      color: var(--signal);
+    }
+
+    .btn-danger {
+      background: rgba(248, 113, 113, 0.1);
+      border: 1px solid var(--danger);
+      color: var(--danger);
+    }
+
+    .btn-danger:hover {
+      background: rgba(248, 113, 113, 0.2);
+    }
+
+    .btn-sm { padding: 0.4rem 0.8rem; font-size: 0.8rem; }
+    .btn-full { width: 100%; justify-content: center; }
+
+    .btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    /* ===== ERROR / INFO MESSAGES ===== */
+    .error-msg {
+      color: var(--danger);
+      font-size: 0.8rem;
+      margin-bottom: 1rem;
+      padding: 0.5rem 0.75rem;
+      background: rgba(248, 113, 113, 0.08);
+      border-radius: 6px;
+      border: 1px solid rgba(248, 113, 113, 0.2);
+    }
+
+    .newpass-info {
+      color: var(--signal);
+      font-size: 0.85rem;
+      margin-bottom: 1.5rem;
+      padding: 0.75rem;
+      background: rgba(125, 249, 255, 0.05);
+      border-radius: 8px;
+      border: 1px solid rgba(125, 249, 255, 0.15);
+    }
+
+    .error-banner {
+      padding: 1rem;
+      background: rgba(248, 113, 113, 0.08);
+      border: 1px solid rgba(248, 113, 113, 0.2);
+      border-radius: 10px;
+      color: var(--danger);
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .error-banner button {
+      flex-shrink: 0;
+    }
+
+    /* ===== TOP BAR ===== */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 1.5rem;
+      background: var(--panel);
+      border-bottom: 1px solid var(--panel-border);
+      backdrop-filter: blur(20px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .topbar-left {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .topbar-title {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 1.1rem;
+      color: var(--signal);
+      text-shadow: 0 0 10px rgba(125, 249, 255, 0.4);
+    }
+
+    .topbar-badge {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.65rem;
+      padding: 0.2rem 0.5rem;
+      background: rgba(167, 139, 250, 0.15);
+      border: 1px solid rgba(167, 139, 250, 0.3);
+      border-radius: 4px;
+      color: var(--signal-2);
+      letter-spacing: 0.1em;
+    }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .admin-email {
+      font-size: 0.8rem;
+      color: var(--muted);
+      font-family: 'Share Tech Mono', monospace;
+    }
+
+    /* ===== TAB NAVIGATION ===== */
+    .tab-nav {
+      display: flex;
+      gap: 0;
+      padding: 0 1.5rem;
+      background: rgba(13, 25, 50, 0.5);
+      border-bottom: 1px solid var(--line);
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .tab-btn {
+      padding: 0.9rem 1.25rem;
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--muted);
+      font-family: 'Inter', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .tab-btn:hover {
+      color: var(--text);
+    }
+
+    .tab-btn.active {
+      color: var(--signal);
+      border-bottom-color: var(--signal);
+    }
+
+    /* ===== MAIN CONTENT ===== */
+    .main-content {
+      padding: 1.5rem;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+    }
+
+    .section-header h2 {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 1.2rem;
+      color: var(--text);
+    }
+
+    /* ===== STATS GRID ===== */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+    }
+
+    .stat-card {
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      backdrop-filter: blur(10px);
+      text-align: center;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .stat-card:hover {
+      border-color: rgba(125, 249, 255, 0.25);
+      box-shadow: var(--glow);
+    }
+
+    .stat-value {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 2rem;
+      color: var(--signal);
+      text-shadow: 0 0 10px rgba(125, 249, 255, 0.3);
+      margin-bottom: 0.25rem;
+    }
+
+    .stat-label {
+      font-size: 0.75rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* ===== LOADING ===== */
+    .loading-indicator {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+      padding: 2rem;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    .spinner {
+      width: 20px;
+      height: 20px;
+      border: 2px solid var(--panel-border);
+      border-top-color: var(--signal);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ===== FORM PANEL ===== */
+    .form-panel {
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      backdrop-filter: blur(10px);
+    }
+
+    .form-panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.25rem;
+    }
+
+    .form-panel-header h3 {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 1rem;
+      color: var(--signal);
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .form-actions {
+      margin-top: 1.25rem;
+      display: flex;
+      gap: 0.75rem;
+    }
+
+    .type-fields {
+      padding: 1rem;
+      background: rgba(125, 249, 255, 0.03);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      margin-top: 0.5rem;
+    }
+
+    /* ===== DATA LIST ===== */
+    .data-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .data-card {
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: 10px;
+      padding: 1.25rem;
+      backdrop-filter: blur(10px);
+      transition: border-color 0.2s;
+    }
+
+    .data-card:hover {
+      border-color: rgba(125, 249, 255, 0.2);
+    }
+
+    .data-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.75rem;
+    }
+
+    .data-card-title {
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .data-card-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    .data-card-meta span {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    .data-card-actions {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid var(--line);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .badge-scheduled { background: rgba(251, 191, 36, 0.15); color: var(--signal-5); border: 1px solid rgba(251, 191, 36, 0.3); }
+    .badge-active { background: rgba(52, 211, 153, 0.15); color: var(--success); border: 1px solid rgba(52, 211, 153, 0.3); }
+    .badge-completed { background: rgba(100, 116, 139, 0.15); color: var(--muted); border: 1px solid rgba(100, 116, 139, 0.3); }
+
+    .badge-type {
+      background: rgba(167, 139, 250, 0.12);
+      color: var(--signal-2);
+      border: 1px solid rgba(167, 139, 250, 0.25);
+    }
+
+    /* ===== TABLE ===== */
+    .table-container {
+      overflow-x: auto;
+      border-radius: 10px;
+      border: 1px solid var(--panel-border);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+
+    thead {
+      background: rgba(13, 25, 50, 0.8);
+    }
+
+    th {
+      padding: 0.75rem 1rem;
+      text-align: left;
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      border-bottom: 1px solid var(--panel-border);
+    }
+
+    td {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--line);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.8rem;
+    }
+
+    tr:last-child td { border-bottom: none; }
+
+    tr:hover td {
+      background: rgba(125, 249, 255, 0.03);
+    }
+
+    .rank-cell {
+      color: var(--signal);
+      font-weight: 700;
+    }
+
+    /* ===== TRAFFIC GRID ===== */
+    .traffic-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 1rem;
+    }
+
+    .traffic-card {
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: 12px;
+      padding: 1.25rem;
+      backdrop-filter: blur(10px);
+      transition: border-color 0.2s, box-shadow 0.2s;
+      cursor: pointer;
+    }
+
+    .traffic-card:hover {
+      border-color: rgba(125, 249, 255, 0.25);
+      box-shadow: var(--glow);
+    }
+
+    .traffic-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.75rem;
+    }
+
+    .traffic-station-name {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.9rem;
+      color: var(--text);
+    }
+
+    .traffic-count {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 1.5rem;
+      color: var(--signal);
+      text-shadow: 0 0 8px rgba(125, 249, 255, 0.3);
+    }
+
+    .traffic-bar {
+      height: 4px;
+      background: var(--line);
+      border-radius: 2px;
+      overflow: hidden;
+      margin-top: 0.5rem;
+    }
+
+    .traffic-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--signal), var(--signal-2));
+      border-radius: 2px;
+      transition: width 0.5s ease;
+    }
+
+    .traffic-detail {
+      margin-top: 0.75rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid var(--line);
+      font-size: 0.75rem;
+      color: var(--muted);
+      max-height: 120px;
+      overflow-y: auto;
+    }
+
+    .traffic-detail-item {
+      padding: 0.25rem 0;
+      font-family: 'Share Tech Mono', monospace;
+    }
+
+    /* ===== STATION CHECKBOXES ===== */
+    .station-checkboxes {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 0.5rem;
+    }
+
+    .checkbox-label {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.8rem;
+      color: var(--text);
+      cursor: pointer;
+      padding: 0.4rem 0.6rem;
+      border-radius: 6px;
+      transition: background 0.2s;
+    }
+
+    .checkbox-label:hover {
+      background: rgba(125, 249, 255, 0.05);
+    }
+
+    .checkbox-label input[type="checkbox"] {
+      width: auto;
+      accent-color: var(--signal);
+      cursor: pointer;
+    }
+
+    /* ===== EMPTY STATE ===== */
+    .empty-state {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 768px) {
+      .topbar {
+        flex-direction: column;
+        gap: 0.75rem;
+        align-items: flex-start;
+      }
+
+      .topbar-right {
+        width: 100%;
+        justify-content: space-between;
+      }
+
+      .main-content {
+        padding: 1rem;
+      }
+
+      .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+
+      .section-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+      }
+
+      .traffic-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .admin-email {
+        display: none;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .login-card {
+        padding: 1.5rem;
+      }
+
+      .tab-btn {
+        padding: 0.75rem 0.9rem;
+        font-size: 0.8rem;
+      }
+    }
+
+    /* ===== SCROLLBAR ===== */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--panel-border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--signal); }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <!-- LOGIN VIEW -->
+    <div id="login-view">
+      <div class="login-card">
+        <h1>SIGNAL HUNT</h1>
+        <p class="subtitle">管理控制台</p>
+        <div id="login-form">
+          <div class="form-group">
+            <label for="login-email">邮箱</label>
+            <input type="email" id="login-email" placeholder="admin@example.com" autocomplete="email" />
+          </div>
+          <div class="form-group">
+            <label for="login-password">密码</label>
+            <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password" />
+          </div>
+          <div id="login-error" class="error-msg" style="display:none"></div>
+          <button id="login-btn" class="btn btn-primary btn-full" onclick="handleLogin()">登录</button>
+        </div>
+        <div id="newpass-form" style="display:none">
+          <p class="newpass-info">需要设置新密码。请设置您的永久密码。</p>
+          <div class="form-group">
+            <label for="new-password">新密码</label>
+            <input type="password" id="new-password" placeholder="新密码" autocomplete="new-password" />
+          </div>
+          <div class="form-group">
+            <label for="confirm-password">确认密码</label>
+            <input type="password" id="confirm-password" placeholder="确认密码" autocomplete="new-password" />
+          </div>
+          <div id="newpass-error" class="error-msg" style="display:none"></div>
+          <button id="newpass-btn" class="btn btn-primary btn-full" onclick="handleNewPassword()">设置密码</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- DASHBOARD VIEW -->
+    <div id="dashboard-view" style="display:none">
+      <!-- Top Bar -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <h1 class="topbar-title">SIGNAL HUNT</h1>
+          <span class="topbar-badge">管理员</span>
+        </div>
+        <div class="topbar-right">
+          <span id="admin-email" class="admin-email"></span>
+          <button class="btn btn-ghost" onclick="handleLogout()">退出</button>
+        </div>
+      </header>
+
+      <!-- Tab Navigation -->
+      <nav class="tab-nav">
+        <button class="tab-btn active" data-tab="overview" onclick="switchTab('overview')">概览</button>
+        <button class="tab-btn" data-tab="missions" onclick="switchTab('missions')">任务</button>
+        <button class="tab-btn" data-tab="combos" onclick="switchTab('combos')">组合</button>
+        <button class="tab-btn" data-tab="leaderboard" onclick="switchTab('leaderboard')">排行榜</button>
+        <button class="tab-btn" data-tab="traffic" onclick="switchTab('traffic')">流量</button>
+        <button class="tab-btn" data-tab="lottery" onclick="switchTab('lottery')">🎲 抽奖</button>
+      </nav>
+
+      <!-- Tab Content -->
+      <main class="main-content">
+        <!-- OVERVIEW TAB -->
+        <section id="tab-overview" class="tab-panel active">
+          <div class="section-header">
+            <h2>活动概览</h2>
+            <button class="btn btn-ghost btn-sm" onclick="loadOverview()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+              刷新
+            </button>
+          </div>
+          <div id="overview-stats" class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-value" id="stat-checkins">--</div>
+              <div class="stat-label">总打卡数</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="stat-visitors">--</div>
+              <div class="stat-label">独立访客</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="stat-missions">--</div>
+              <div class="stat-label">活跃任务</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="stat-completions">--</div>
+              <div class="stat-label">集邮完成</div>
+            </div>
+          </div>
+          <div id="overview-loading" class="loading-indicator" style="display:none">
+            <div class="spinner"></div>
+            <span>加载统计数据...</span>
+          </div>
+          <div id="overview-error" class="error-banner" style="display:none"></div>
+        </section>
+
+        <!-- MISSIONS TAB -->
+        <section id="tab-missions" class="tab-panel">
+          <div class="section-header">
+            <h2>任务管理</h2>
+            <button class="btn btn-primary btn-sm" onclick="showMissionForm()">+ 新建任务</button>
+          </div>
+
+          <!-- Mission Create/Edit Form -->
+          <div id="mission-form-container" class="form-panel" style="display:none">
+            <div class="form-panel-header">
+              <h3 id="mission-form-title">创建任务</h3>
+              <button class="btn btn-ghost btn-sm" onclick="hideMissionForm()">取消</button>
+            </div>
+            <form id="mission-form" onsubmit="handleMissionSubmit(event)">
+              <input type="hidden" id="mission-edit-id" />
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="mission-type">类型</label>
+                  <select id="mission-type" onchange="onMissionTypeChange()">
+                    <option value="">选择类型...</option>
+                    <option value="numbered_visit">编号访客</option>
+                    <option value="lucky_draw">幸运抽奖</option>
+                    <option value="early_bird">早鸟奖励</option>
+                    <option value="last_call">末位奖励</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="mission-name">名称</label>
+                  <input type="text" id="mission-name" placeholder="任务名称" required />
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="mission-station">站点</label>
+                  <select id="mission-station">
+                    <option value="">所有站点</option>
+                    <option value="1">站点 1</option>
+                    <option value="2">站点 2</option>
+                    <option value="3">站点 3</option>
+                    <option value="4">站点 4</option>
+                    <option value="5">站点 5</option>
+                    <option value="6">站点 6</option>
+                    <option value="7">站点 7</option>
+                    <option value="8">站点 8</option>
+                    <option value="9">站点 9</option>
+                    <option value="10">站点 10</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="mission-start">开始时间</label>
+                  <input type="datetime-local" id="mission-start" />
+                </div>
+                <div class="form-group">
+                  <label for="mission-end">结束时间</label>
+                  <input type="datetime-local" id="mission-end" />
+                </div>
+              </div>
+
+              <!-- Type-specific fields -->
+              <div id="fields-numbered_visit" class="type-fields" style="display:none">
+                <div class="form-group">
+                  <label for="mission-milestones">里程碑（逗号分隔的数字）</label>
+                  <input type="text" id="mission-milestones" placeholder="e.g. 5,10,20,50" />
+                </div>
+                <div class="form-group">
+                  <label for="mission-prize-nv">奖品描述（参与者中奖时会看到）</label>
+                  <input type="text" id="mission-prize-nv" placeholder="例：到站点1领取限量T恤" />
+                </div>
+              </div>
+              <div id="fields-lucky_draw" class="type-fields" style="display:none">
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="mission-winner-count-ld">获奖人数</label>
+                    <input type="number" id="mission-winner-count-ld" min="1" placeholder="1" />
+                  </div>
+                  <div class="form-group">
+                    <label for="mission-prize">奖品描述</label>
+                    <input type="text" id="mission-prize" placeholder="奖品描述" />
+                  </div>
+                </div>
+              </div>
+              <div id="fields-early_bird" class="type-fields" style="display:none">
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="mission-winner-count-eb">获奖人数</label>
+                    <input type="number" id="mission-winner-count-eb" min="1" placeholder="1" />
+                  </div>
+                  <div class="form-group">
+                    <label for="mission-bonus-eb">奖励积分</label>
+                    <input type="number" id="mission-bonus-eb" min="1" placeholder="10" />
+                  </div>
+                </div>
+              </div>
+              <div id="fields-last_call" class="type-fields" style="display:none">
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="mission-winner-count-lc">获奖人数</label>
+                    <input type="number" id="mission-winner-count-lc" min="1" placeholder="1" />
+                  </div>
+                  <div class="form-group">
+                    <label for="mission-bonus-lc">奖励积分</label>
+                    <input type="number" id="mission-bonus-lc" min="1" placeholder="10" />
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-actions">
+                <button type="submit" class="btn btn-primary" id="mission-submit-btn">创建任务</button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Mission List -->
+          <div id="missions-list" class="data-list"></div>
+          <div id="missions-loading" class="loading-indicator" style="display:none">
+            <div class="spinner"></div><span>加载任务...</span>
+          </div>
+          <div id="missions-error" class="error-banner" style="display:none"></div>
+          <div id="missions-empty" class="empty-state" style="display:none">暂无任务。点击上方按钮创建。</div>
+        </section>
+
+        <!-- COMBOS TAB -->
+        <section id="tab-combos" class="tab-panel">
+          <div class="section-header">
+            <h2>组合管理</h2>
+            <button class="btn btn-primary btn-sm" onclick="showComboForm()">+ 新建组合</button>
+          </div>
+
+          <!-- Combo Create Form -->
+          <div id="combo-form-container" class="form-panel" style="display:none">
+            <div class="form-panel-header">
+              <h3>创建组合</h3>
+              <button class="btn btn-ghost btn-sm" onclick="hideComboForm()">取消</button>
+            </div>
+            <form id="combo-form" onsubmit="handleComboSubmit(event)">
+              <div class="form-group">
+                <label for="combo-name">组合名称</label>
+                <input type="text" id="combo-name" placeholder="组合名称" required />
+              </div>
+              <div class="form-group">
+                <label>所需站点</label>
+                <div class="station-checkboxes" id="combo-stations">
+                  <label class="checkbox-label"><input type="checkbox" value="1" /> 站点 1</label>
+                  <label class="checkbox-label"><input type="checkbox" value="2" /> 站点 2</label>
+                  <label class="checkbox-label"><input type="checkbox" value="3" /> 站点 3</label>
+                  <label class="checkbox-label"><input type="checkbox" value="4" /> 站点 4</label>
+                  <label class="checkbox-label"><input type="checkbox" value="5" /> 站点 5</label>
+                  <label class="checkbox-label"><input type="checkbox" value="6" /> 站点 6</label>
+                  <label class="checkbox-label"><input type="checkbox" value="7" /> 站点 7</label>
+                  <label class="checkbox-label"><input type="checkbox" value="8" /> 站点 8</label>
+                  <label class="checkbox-label"><input type="checkbox" value="9" /> 站点 9</label>
+                  <label class="checkbox-label"><input type="checkbox" value="10" /> 站点 10</label>
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="combo-reward">奖励描述</label>
+                <input type="text" id="combo-reward" placeholder="奖励描述" required />
+              </div>
+              <div class="form-actions">
+                <button type="submit" class="btn btn-primary">创建组合</button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Combo List -->
+          <div id="combos-list" class="data-list"></div>
+          <div id="combos-loading" class="loading-indicator" style="display:none">
+            <div class="spinner"></div><span>加载组合...</span>
+          </div>
+          <div id="combos-error" class="error-banner" style="display:none"></div>
+          <div id="combos-empty" class="empty-state" style="display:none">暂无组合配置。</div>
+        </section>
+
+        <!-- LEADERBOARD TAB -->
+        <section id="tab-leaderboard" class="tab-panel">
+          <div class="section-header">
+            <h2>速度排行榜</h2>
+            <button class="btn btn-ghost btn-sm" onclick="loadLeaderboard()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+              刷新
+            </button>
+          </div>
+          <div id="leaderboard-table-container" class="table-container"></div>
+          <div id="leaderboard-loading" class="loading-indicator" style="display:none">
+            <div class="spinner"></div><span>加载排行榜...</span>
+          </div>
+          <div id="leaderboard-error" class="error-banner" style="display:none"></div>
+          <div id="leaderboard-empty" class="empty-state" style="display:none">暂无排行榜数据。</div>
+        </section>
+
+        <!-- TRAFFIC TAB -->
+        <section id="tab-traffic" class="tab-panel">
+          <div class="section-header">
+            <h2>站点流量</h2>
+            <button class="btn btn-ghost btn-sm" onclick="loadTraffic()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+              刷新
+            </button>
+          </div>
+          <div id="traffic-grid" class="traffic-grid"></div>
+          <div id="traffic-loading" class="loading-indicator" style="display:none">
+            <div class="spinner"></div><span>加载站点数据...</span>
+          </div>
+          <div id="traffic-error" class="error-banner" style="display:none"></div>
+        </section>
+
+        <!-- LOTTERY TAB -->
+        <section id="tab-lottery" class="tab-panel">
+          <div class="section-header">
+            <h2>🎲 After Party 抽奖</h2>
+          </div>
+
+          <div class="data-card" style="margin-bottom:1.5rem">
+            <div class="data-card-header"><span class="data-card-title">抽奖设置</span></div>
+            <div style="padding:1rem;display:grid;gap:1rem;grid-template-columns:1fr 1fr">
+              <div class="form-group">
+                <label class="form-label">After Party 开始时间</label>
+                <input type="datetime-local" id="lottery-gate-time" class="form-input" />
+                <small style="color:var(--muted);margin-top:4px;display:block">该时间之后的打卡计为 After Party 参与</small>
+              </div>
+              <div class="form-group">
+                <label class="form-label">今晚中奖总人数</label>
+                <input type="number" id="lottery-total-winners" class="form-input" min="1" value="5" />
+                <small style="color:var(--muted);margin-top:4px;display:block">仅供参考提示,仍需手动逐个抽奖</small>
+              </div>
+            </div>
+            <div style="padding:0 1rem 1rem">
+              <button class="btn btn-primary" onclick="saveLotteryConfig()">保存设置</button>
+              <span id="lottery-config-status" style="margin-left:12px;color:var(--success);display:none">✓ 已保存</span>
+            </div>
+          </div>
+
+          <div class="data-card" style="margin-bottom:1.5rem">
+            <div class="data-card-header">
+              <span class="data-card-title">触发抽奖</span>
+              <span id="lottery-progress" style="color:var(--muted);font-size:0.85rem">已抽 0 / <span id="lottery-target">5</span> 人</span>
+            </div>
+            <div style="padding:1rem;display:flex;gap:1rem;align-items:center">
+              <button class="btn btn-primary" id="lottery-draw-btn" onclick="doLotteryDraw()" style="font-size:1.1rem;padding:0.8rem 2rem">
+                🎲 抽奖！
+              </button>
+              <span id="lottery-draw-result" style="font-size:1.2rem;font-weight:700;color:var(--signal)"></span>
+            </div>
+          </div>
+
+          <div class="data-card" style="margin-bottom:1.5rem">
+            <div class="data-card-header">
+              <span class="data-card-title">手动添加中奖人</span>
+            </div>
+            <div style="padding:1rem;display:flex;gap:1rem;align-items:center;flex-wrap:wrap">
+              <input type="text" id="lottery-manual-nickname" class="form-input" placeholder="输入中奖人用户名/昵称" style="flex:1 1 240px;min-width:200px" />
+              <button class="btn btn-primary" id="lottery-manual-btn" onclick="addManualWinner()" style="padding:0.7rem 1.6rem">
+                ➕ 添加为中奖人
+              </button>
+              <span id="lottery-manual-result" style="font-weight:600;color:var(--signal)"></span>
+            </div>
+            <small style="color:var(--muted);padding:0 1rem 1rem;display:block">手动指定的中奖人会和随机抽奖一样推送到大屏并播放揭晓动画（无需是已登记的参与者）。</small>
+          </div>
+
+          <div class="data-card">
+            <div class="data-card-header">
+              <span class="data-card-title">已中奖名单</span>
+              <button class="btn btn-ghost btn-sm" onclick="loadLotteryWinners()">刷新</button>
+            </div>
+            <div id="lottery-winners-list" style="padding:1rem">
+              <p class="empty-state">点击"抽奖"开始...</p>
+            </div>
+          </div>
+
+          <div class="data-card" style="margin-top:1.5rem">
+            <div class="data-card-header">
+              <span class="data-card-title">当前参与者 (<span id="lottery-participant-count">--</span> 人)</span>
+              <button class="btn btn-ghost btn-sm" onclick="loadLotteryParticipants()">刷新</button>
+            </div>
+            <div style="padding:1rem;display:flex;gap:1rem;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--border)">
+              <input type="text" id="lottery-add-candidate" class="form-input" placeholder="手动添加候选人用户名/昵称" style="flex:1 1 240px;min-width:200px" />
+              <button class="btn btn-primary" id="lottery-add-candidate-btn" onclick="addCandidate()" style="padding:0.7rem 1.6rem">
+                ➕ 添加候选人
+              </button>
+              <span id="lottery-add-candidate-result" style="font-weight:600;color:var(--signal)"></span>
+            </div>
+            <div id="lottery-participants-list" style="padding:1rem">
+              <p class="empty-state">加载中...</p>
+            </div>
+          </div>
+
+          <div class="data-card" style="margin-top:1.5rem;border-color:rgba(248,113,113,0.3)">
+            <div class="data-card-header">
+              <span class="data-card-title" style="color:var(--danger)">⚠️ 危险操作</span>
+            </div>
+            <div style="padding:1rem;display:flex;gap:1rem;align-items:center">
+              <button class="btn" style="background:rgba(248,113,113,0.15);border:1px solid rgba(248,113,113,0.5);color:var(--danger)" onclick="resetLottery()">
+                🗑️ 重置抽奖（删除所有昵称和中奖记录）
+              </button>
+              <span id="lottery-reset-status" style="color:var(--muted);font-size:0.85rem"></span>
+            </div>
+          </div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+
+  <!-- JAVASCRIPT -->
+  <script>
+  // ===== CONFIGURATION =====
+  const CONFIG = {
+    REGION: 'ap-northeast-1',
+    USER_POOL_ID: 'ap-northeast-1_dBdKduSNI',
+    CLIENT_ID: '43gokealbmen6doviustcfh62c',
+    API_BASE: 'https://7orrwwprye.execute-api.ap-northeast-1.amazonaws.com'
+  };
+
+  // ===== STATE =====
+  let currentSession = { idToken: null, accessToken: null, refreshToken: null };
+  let cognitoUser = null;
+  let userPool = null;
+  let currentTab = 'overview';
+  let editingMissionId = null;
+
+  // ===== INITIALIZATION =====
+  function initCognito() {
+    const poolData = {
+      UserPoolId: CONFIG.USER_POOL_ID,
+      ClientId: CONFIG.CLIENT_ID
+    };
+    userPool = new AmazonCognitoIdentity.CognitoUserPool(poolData);
+
+    // Check for existing session
+    const currentUser = userPool.getCurrentUser();
+    if (currentUser) {
+      currentUser.getSession((err, session) => {
+        if (!err && session && session.isValid()) {
+          cognitoUser = currentUser;
+          currentSession.idToken = session.getIdToken().getJwtToken();
+          currentSession.accessToken = session.getAccessToken().getJwtToken();
+          currentSession.refreshToken = session.getRefreshToken();
+          showDashboard();
+        }
+      });
+    }
+  }
+
+  // ===== AUTHENTICATION =====
+  function handleLogin() {
+    const email = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+    const errorEl = document.getElementById('login-error');
+    const btn = document.getElementById('login-btn');
+
+    if (!email || !password) {
+      showError(errorEl, '请输入邮箱和密码。');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = '登录中...';
+    errorEl.style.display = 'none';
+
+    const authDetails = new AmazonCognitoIdentity.AuthenticationDetails({
+      Username: email,
+      Password: password
+    });
+
+    const userData = { Username: email, Pool: userPool };
+    cognitoUser = new AmazonCognitoIdentity.CognitoUser(userData);
+
+    cognitoUser.authenticateUser(authDetails, {
+      onSuccess: (session) => {
+        currentSession.idToken = session.getIdToken().getJwtToken();
+        currentSession.accessToken = session.getAccessToken().getJwtToken();
+        currentSession.refreshToken = session.getRefreshToken();
+        btn.disabled = false;
+        btn.textContent = '登录';
+        showDashboard();
+      },
+      onFailure: (err) => {
+        btn.disabled = false;
+        btn.textContent = '登录';
+        let msg = '邮箱或密码错误。';
+        if (err.code === 'TooManyRequestsException' || err.code === 'LimitExceededException') {
+          msg = '尝试次数过多，请稍后再试。';
+        } else if (err.code === 'NetworkError' || err.message?.includes('fetch')) {
+          msg = '网络错误，请检查连接。';
+        }
+        showError(errorEl, msg);
+      },
+      newPasswordRequired: (userAttributes) => {
+        btn.disabled = false;
+        btn.textContent = '登录';
+        document.getElementById('login-form').style.display = 'none';
+        document.getElementById('newpass-form').style.display = 'block';
+      }
+    });
+  }
+
+  function handleNewPassword() {
+    const newPass = document.getElementById('new-password').value;
+    const confirmPass = document.getElementById('confirm-password').value;
+    const errorEl = document.getElementById('newpass-error');
+    const btn = document.getElementById('newpass-btn');
+
+    if (!newPass || newPass.length < 8) {
+      showError(errorEl, '密码至少需要 8 个字符。');
+      return;
+    }
+    if (newPass !== confirmPass) {
+      showError(errorEl, '两次密码不一致。');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = '设置中...';
+    errorEl.style.display = 'none';
+
+    cognitoUser.completeNewPasswordChallenge(newPass, {}, {
+      onSuccess: (session) => {
+        currentSession.idToken = session.getIdToken().getJwtToken();
+        currentSession.accessToken = session.getAccessToken().getJwtToken();
+        currentSession.refreshToken = session.getRefreshToken();
+        btn.disabled = false;
+        btn.textContent = '设置密码';
+        showDashboard();
+      },
+      onFailure: (err) => {
+        btn.disabled = false;
+        btn.textContent = '设置密码';
+        showError(errorEl, err.message || 'Failed to set password.');
+      }
+    });
+  }
+
+  function refreshToken() {
+    return new Promise((resolve) => {
+      if (!cognitoUser || !currentSession.refreshToken) {
+        resolve(false);
+        return;
+      }
+      const refreshToken = currentSession.refreshToken;
+      cognitoUser.refreshSession(refreshToken, (err, session) => {
+        if (err) {
+          resolve(false);
+          return;
+        }
+        currentSession.idToken = session.getIdToken().getJwtToken();
+        currentSession.accessToken = session.getAccessToken().getJwtToken();
+        currentSession.refreshToken = session.getRefreshToken();
+        resolve(true);
+      });
+    });
+  }
+
+  function handleLogout() {
+    if (cognitoUser) cognitoUser.signOut();
+    currentSession = { idToken: null, accessToken: null, refreshToken: null };
+    cognitoUser = null;
+    document.getElementById('dashboard-view').style.display = 'none';
+    document.getElementById('login-view').style.display = 'flex';
+    document.getElementById('login-form').style.display = 'block';
+    document.getElementById('newpass-form').style.display = 'none';
+    document.getElementById('login-password').value = '';
+    document.getElementById('login-error').style.display = 'none';
+  }
+
+  function getIdToken() { return currentSession.idToken; }
+
+  function showDashboard() {
+    document.getElementById('login-view').style.display = 'none';
+    document.getElementById('dashboard-view').style.display = 'block';
+    // Show admin email
+    const payload = parseJwt(currentSession.idToken);
+    if (payload && payload.email) {
+      document.getElementById('admin-email').textContent = payload.email;
+    }
+    loadOverview();
+  }
+
+  function parseJwt(token) {
+    try {
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      return JSON.parse(atob(base64));
+    } catch (e) { return null; }
+  }
+
+  // ===== API MODULE =====
+  async function apiRequest(method, path, body = null) {
+    const headers = { 'Content-Type': 'application/json' };
+    const token = getIdToken();
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    let response;
+    try {
+      response = await fetch(CONFIG.API_BASE + path, {
+        method,
+        headers,
+        body: body ? JSON.stringify(body) : undefined
+      });
+    } catch (e) {
+      throw new Error('网络错误，请检查连接。');
+    }
+
+    if (response.status === 401) {
+      const refreshed = await refreshToken();
+      if (refreshed) {
+        headers['Authorization'] = `Bearer ${getIdToken()}`;
+        response = await fetch(CONFIG.API_BASE + path, {
+          method,
+          headers,
+          body: body ? JSON.stringify(body) : undefined
+        });
+      } else {
+        handleLogout();
+        throw new Error('会话已过期，请重新登录。');
+      }
+    }
+
+    return response;
+  }
+
+  async function apiGet(path) { return apiRequest('GET', path); }
+  async function apiPost(path, body) { return apiRequest('POST', path, body); }
+  async function apiPut(path, body) { return apiRequest('PUT', path, body); }
+  async function apiDelete(path) { return apiRequest('DELETE', path); }
+
+  // ===== UI HELPERS =====
+  function showError(el, msg) {
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+
+  function showBannerError(containerId, msg, retryFn) {
+    const el = document.getElementById(containerId);
+    el.innerHTML = `<span>${msg}</span>${retryFn ? `<button class="btn btn-ghost btn-sm" onclick="${retryFn}()">重试</button>` : ''}`;
+    el.style.display = 'flex';
+  }
+
+  function hideEl(id) { document.getElementById(id).style.display = 'none'; }
+  function showEl(id, display = 'block') { document.getElementById(id).style.display = display; }
+
+  // ===== TAB NAVIGATION =====
+  function switchTab(tab) {
+    currentTab = tab;
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.tab === tab);
+    });
+    document.querySelectorAll('.tab-panel').forEach(panel => {
+      panel.classList.toggle('active', panel.id === `tab-${tab}`);
+    });
+
+    // Load data for the tab
+    switch (tab) {
+      case 'overview': loadOverview(); break;
+      case 'missions': loadMissions(); break;
+      case 'combos': loadCombos(); break;
+      case 'leaderboard': loadLeaderboard(); break;
+      case 'traffic': loadTraffic(); break;
+    }
+  }
+
+  // ===== OVERVIEW =====
+  async function loadOverview() {
+    showEl('overview-loading', 'flex');
+    hideEl('overview-error');
+
+    try {
+      const [stationsRes, leaderboardRes] = await Promise.all([
+        apiGet('/stations'),
+        apiGet('/leaderboard')
+      ]);
+
+      if (!stationsRes.ok || !leaderboardRes.ok) throw new Error('加载统计数据失败');
+
+      const stationsData = await stationsRes.json();
+      const leaderboardData = await leaderboardRes.json();
+
+      const stations = stationsData.stations || stationsData || [];
+      const totalCheckins = Array.isArray(stations) ? stations.reduce((sum, s) => sum + (s.uniqueVisitors || s.unique_visitors || 0), 0) : 0;
+      const maxVisitors = Array.isArray(stations) ? stations.reduce((max, s) => Math.max(max, s.uniqueVisitors || s.unique_visitors || 0), 0) : 0;
+      const completions = leaderboardData.totalEntries || leaderboardData.total || (leaderboardData.entries ? leaderboardData.entries.length : 0);
+
+      document.getElementById('stat-checkins').textContent = totalCheckins;
+      document.getElementById('stat-visitors').textContent = maxVisitors;
+      document.getElementById('stat-completions').textContent = completions;
+
+      // Try to get missions count
+      try {
+        const missionsRes = await apiGet('/missions');
+        if (missionsRes.ok) {
+          const missionsData = await missionsRes.json();
+          const missions = missionsData.missions || missionsData || [];
+          const activeMissions = Array.isArray(missions) ? missions.filter(m => m.status === 'active').length : 0;
+          document.getElementById('stat-missions').textContent = activeMissions;
+        }
+      } catch (e) {
+        document.getElementById('stat-missions').textContent = '--';
+      }
+
+      hideEl('overview-loading');
+    } catch (err) {
+      hideEl('overview-loading');
+      showBannerError('overview-error', err.message || '加载统计数据失败。', 'loadOverview');
+    }
+  }
+
+  // ===== MISSIONS =====
+  async function loadMissions() {
+    showEl('missions-loading', 'flex');
+    hideEl('missions-error');
+    hideEl('missions-empty');
+    document.getElementById('missions-list').innerHTML = '';
+
+    try {
+      const res = await apiGet('/missions');
+      if (!res.ok) throw new Error('加载任务失败');
+      const data = await res.json();
+      const missions = data.missions || data || [];
+
+      hideEl('missions-loading');
+
+      if (!missions.length) {
+        showEl('missions-empty');
+        return;
+      }
+
+      renderMissions(missions);
+    } catch (err) {
+      hideEl('missions-loading');
+      showBannerError('missions-error', err.message, 'loadMissions');
+    }
+  }
+
+  function renderMissions(missions) {
+    const container = document.getElementById('missions-list');
+    container.innerHTML = missions.map(m => {
+      const statusClass = `badge-${m.status || 'scheduled'}`;
+      const canModify = m.status === 'scheduled';
+      const typeLabel = (m.type || '').replace(/_/g, ' ');
+      const startStr = m.startTime ? new Date(m.startTime).toLocaleString() : '--';
+      const endStr = m.endTime ? new Date(m.endTime).toLocaleString() : '--';
+
+      return `
+        <div class="data-card">
+          <div class="data-card-header">
+            <span class="data-card-title">${escHtml(m.name || m.missionId || 'Unnamed')}</span>
+            <span class="badge ${statusClass}">${m.status || 'scheduled'}</span>
+          </div>
+          <div class="data-card-meta">
+            <span><span class="badge badge-type">${typeLabel}</span></span>
+            <span>站点: ${m.stationId || '全部'}</span>
+            <span>开始: ${startStr}</span>
+            <span>结束: ${endStr}</span>
+          </div>
+          <div class="data-card-actions">
+            <button class="btn btn-ghost btn-sm" onclick="viewWinners('${m.missionId}')">中奖者</button>
+            <button class="btn btn-ghost btn-sm" ${canModify ? `onclick="editMission('${m.missionId}')"` : 'disabled'}>编辑</button>
+            <button class="btn btn-danger btn-sm" ${canModify ? `onclick="deleteMission('${m.missionId}')"` : 'disabled'}>删除</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function showMissionForm(mission = null) {
+    editingMissionId = mission ? mission.missionId : null;
+    document.getElementById('mission-form-title').textContent = mission ? '编辑任务' : '创建任务';
+    document.getElementById('mission-submit-btn').textContent = mission ? '更新任务' : '创建任务';
+    document.getElementById('mission-edit-id').value = editingMissionId || '';
+
+    if (mission) {
+      document.getElementById('mission-type').value = mission.type || '';
+      document.getElementById('mission-name').value = mission.name || '';
+      document.getElementById('mission-station').value = mission.stationId || '';
+      document.getElementById('mission-start').value = mission.startTime ? toLocalDatetime(mission.startTime) : '';
+      document.getElementById('mission-end').value = mission.endTime ? toLocalDatetime(mission.endTime) : '';
+      onMissionTypeChange();
+      // Fill type-specific fields
+      if (mission.type === 'numbered_visit') {
+        document.getElementById('mission-milestones').value = (mission.milestones || []).join(',');
+      } else if (mission.type === 'lucky_draw') {
+        document.getElementById('mission-winner-count-ld').value = mission.winnerCount || '';
+        document.getElementById('mission-prize').value = mission.prizeDescription || '';
+      } else if (mission.type === 'early_bird') {
+        document.getElementById('mission-winner-count-eb').value = mission.winnerCount || '';
+        document.getElementById('mission-bonus-eb').value = mission.bonusPoints || '';
+      } else if (mission.type === 'last_call') {
+        document.getElementById('mission-winner-count-lc').value = mission.winnerCount || '';
+        document.getElementById('mission-bonus-lc').value = mission.bonusPoints || '';
+      }
+    } else {
+      document.getElementById('mission-form').reset();
+      onMissionTypeChange();
+    }
+
+    showEl('mission-form-container');
+  }
+
+  function hideMissionForm() {
+    hideEl('mission-form-container');
+    editingMissionId = null;
+  }
+
+  function onMissionTypeChange() {
+    const type = document.getElementById('mission-type').value;
+    document.querySelectorAll('.type-fields').forEach(el => el.style.display = 'none');
+    if (type) {
+      const fieldEl = document.getElementById(`fields-${type}`);
+      if (fieldEl) fieldEl.style.display = 'block';
+    }
+  }
+
+  async function handleMissionSubmit(e) {
+    e.preventDefault();
+    const type = document.getElementById('mission-type').value;
+    const name = document.getElementById('mission-name').value.trim();
+    const stationId = document.getElementById('mission-station').value;
+    const startTime = document.getElementById('mission-start').value;
+    const endTime = document.getElementById('mission-end').value;
+
+    if (!type || !name) {
+      alert('请填写类型和名称。');
+      return;
+    }
+
+    const body = { type, name };
+    if (stationId) body.stationId = parseInt(stationId, 10);
+    if (startTime) body.startTime = new Date(startTime).toISOString();
+    if (endTime) body.endTime = new Date(endTime).toISOString();
+
+    // Type-specific fields
+    if (type === 'numbered_visit') {
+      const ms = document.getElementById('mission-milestones').value;
+      if (ms) body.milestones = ms.split(',').map(n => parseInt(n.trim())).filter(n => !isNaN(n));
+      const prize = document.getElementById('mission-prize-nv').value.trim();
+      if (prize) body.prizeDescription = prize;
+    } else if (type === 'lucky_draw') {
+      const wc = document.getElementById('mission-winner-count-ld').value;
+      const prize = document.getElementById('mission-prize').value;
+      if (wc) body.winnerCount = parseInt(wc);
+      if (prize) body.prizeDescription = prize;
+    } else if (type === 'early_bird') {
+      const wc = document.getElementById('mission-winner-count-eb').value;
+      const bp = document.getElementById('mission-bonus-eb').value;
+      if (wc) body.winnerCount = parseInt(wc);
+      if (bp) body.bonusPoints = parseInt(bp);
+    } else if (type === 'last_call') {
+      const wc = document.getElementById('mission-winner-count-lc').value;
+      const bp = document.getElementById('mission-bonus-lc').value;
+      if (wc) body.winnerCount = parseInt(wc);
+      if (bp) body.bonusPoints = parseInt(bp);
+    }
+
+    try {
+      let res;
+      if (editingMissionId) {
+        res = await apiPut(`/missions/${editingMissionId}`, body);
+      } else {
+        res = await apiPost('/missions', body);
+      }
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.message || `Failed (${res.status})`);
+      }
+
+      hideMissionForm();
+      loadMissions();
+    } catch (err) {
+      alert(err.message || '保存任务失败。');
+    }
+  }
+
+  async function editMission(missionId) {
+    try {
+      const res = await apiGet(`/missions/${missionId}`);
+      if (!res.ok) throw new Error('加载任务失败');
+      const mission = await res.json();
+      showMissionForm(mission.mission || mission);
+    } catch (err) {
+      alert(err.message);
+    }
+  }
+
+  async function deleteMission(missionId) {
+    if (!confirm('确定要删除这个任务吗？')) return;
+    try {
+      const res = await apiDelete(`/missions/${missionId}`);
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.message || '删除失败');
+      }
+      loadMissions();
+    } catch (err) {
+      alert(err.message);
+    }
+  }
+
+  async function viewWinners(missionId) {
+    try {
+      const res = await apiGet(`/missions/${missionId}/winners`);
+      if (!res.ok) throw new Error('加载中奖者失败');
+      const data = await res.json();
+      const winners = data.winners || data || [];
+
+      let html = `<div class="form-panel"><div class="form-panel-header"><h3>中奖者 — ${missionId}</h3><button class="btn btn-ghost btn-sm" onclick="this.closest('.form-panel').remove()">关闭</button></div>`;
+      if (!winners.length) {
+        html += '<p class="empty-state" style="padding:1rem">暂无中奖者。</p>';
+      } else {
+        html += '<table><thead><tr><th>标签 ID</th><th>获奖时间</th></tr></thead><tbody>';
+        winners.forEach(w => {
+          html += `<tr><td>${escHtml(w.tagId || w.tag_id || '--')}</td><td>${w.awardTimestamp || w.awarded_at ? new Date(w.awardTimestamp || w.awarded_at).toLocaleString() : '--'}</td></tr>`;
+        });
+        html += '</tbody></table>';
+      }
+      html += '</div>';
+
+      // Insert after mission list
+      const existing = document.querySelector('#tab-missions .form-panel:not(#mission-form-container)');
+      if (existing) existing.remove();
+      document.getElementById('missions-list').insertAdjacentHTML('beforebegin', html);
+    } catch (err) {
+      alert(err.message);
+    }
+  }
+
+  // ===== COMBOS =====
+  async function loadCombos() {
+    showEl('combos-loading', 'flex');
+    hideEl('combos-error');
+    hideEl('combos-empty');
+    document.getElementById('combos-list').innerHTML = '';
+
+    try {
+      const res = await apiGet('/combos');
+      if (!res.ok) throw new Error('加载组合失败');
+      const data = await res.json();
+      const combos = data.combos || data || [];
+
+      hideEl('combos-loading');
+
+      if (!combos.length) {
+        showEl('combos-empty');
+        return;
+      }
+
+      renderCombos(combos);
+    } catch (err) {
+      hideEl('combos-loading');
+      showBannerError('combos-error', err.message, 'loadCombos');
+    }
+  }
+
+  function renderCombos(combos) {
+    const container = document.getElementById('combos-list');
+    container.innerHTML = combos.map(c => {
+      const stations = (c.stations || c.requiredStations || []).join(', ');
+      return `
+        <div class="data-card">
+          <div class="data-card-header">
+            <span class="data-card-title">${escHtml(c.name || 'Unnamed Combo')}</span>
+          </div>
+          <div class="data-card-meta">
+            <span>站点：${stations || 'None'}</span>
+            <span>奖励：${escHtml(c.reward || c.rewardDescription || '--')}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function showComboForm() { showEl('combo-form-container'); }
+  function hideComboForm() { hideEl('combo-form-container'); document.getElementById('combo-form').reset(); }
+
+  async function handleComboSubmit(e) {
+    e.preventDefault();
+    const name = document.getElementById('combo-name').value.trim();
+    const reward = document.getElementById('combo-reward').value.trim();
+    const checkboxes = document.querySelectorAll('#combo-stations input[type="checkbox"]:checked');
+    const stations = Array.from(checkboxes).map(cb => cb.value);
+
+    if (!name || !stations.length || !reward) {
+      alert('请填写名称、选择至少一个站点并提供奖励描述。');
+      return;
+    }
+
+    try {
+      const res = await apiPost('/combos', { name, stations, reward });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.message || '创建组合失败');
+      }
+      hideComboForm();
+      loadCombos();
+    } catch (err) {
+      alert(err.message);
+    }
+  }
+
+  // ===== LEADERBOARD =====
+  async function loadLeaderboard() {
+    showEl('leaderboard-loading', 'flex');
+    hideEl('leaderboard-error');
+    hideEl('leaderboard-empty');
+    document.getElementById('leaderboard-table-container').innerHTML = '';
+
+    try {
+      const res = await apiGet('/leaderboard');
+      if (!res.ok) throw new Error('加载排行榜失败');
+      const data = await res.json();
+      const entries = data.entries || data.leaderboard || data || [];
+
+      hideEl('leaderboard-loading');
+
+      if (!entries.length) {
+        showEl('leaderboard-empty');
+        return;
+      }
+
+      renderLeaderboard(entries);
+    } catch (err) {
+      hideEl('leaderboard-loading');
+      showBannerError('leaderboard-error', err.message, 'loadLeaderboard');
+    }
+  }
+
+  function renderLeaderboard(entries) {
+    const container = document.getElementById('leaderboard-table-container');
+    let html = `
+      <table>
+        <thead>
+          <tr>
+            <th>排名</th>
+            <th>标签 ID</th>
+            <th>用时</th>
+            <th>完成时间</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+
+    entries.forEach((entry, i) => {
+      const rank = entry.rank || i + 1;
+      const tagId = entry.maskedTagId || entry.tagId || entry.tag_id || '--';
+      const elapsed = entry.elapsedSeconds != null ? formatElapsedTime(entry.elapsedSeconds) : (entry.elapsed_time || '--');
+      const completedAt = entry.completedAt || entry.completed_at ? new Date(entry.completedAt || entry.completed_at).toLocaleString() : '--';
+
+      html += `
+        <tr>
+          <td class="rank-cell">#${rank}</td>
+          <td>${escHtml(tagId)}</td>
+          <td>${elapsed}</td>
+          <td>${completedAt}</td>
+        </tr>
+      `;
+    });
+
+    html += '</tbody></table>';
+    container.innerHTML = html;
+  }
+
+  function formatElapsedTime(totalSeconds) {
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${String(seconds).padStart(2, '0')}`;
+  }
+
+  // ===== TRAFFIC =====
+  async function loadTraffic() {
+    showEl('traffic-loading', 'flex');
+    hideEl('traffic-error');
+    document.getElementById('traffic-grid').innerHTML = '';
+
+    try {
+      const res = await apiGet('/stations');
+      if (!res.ok) throw new Error('加载站点数据失败');
+      const data = await res.json();
+      const stations = data.stations || data || [];
+
+      hideEl('traffic-loading');
+      renderTraffic(stations);
+    } catch (err) {
+      hideEl('traffic-loading');
+      showBannerError('traffic-error', err.message, 'loadTraffic');
+    }
+  }
+
+  function renderTraffic(stations) {
+    const container = document.getElementById('traffic-grid');
+    const maxVisitors = Math.max(...stations.map(s => s.uniqueVisitors || s.unique_visitors || 0), 1);
+
+    const colors = [
+      'var(--signal)', 'var(--signal-2)', 'var(--signal-3)', 'var(--signal-4)',
+      'var(--signal-5)', 'var(--signal-6)', 'var(--signal-7)', 'var(--signal-8)',
+      'var(--signal-9)', 'var(--signal-10)'
+    ];
+
+    container.innerHTML = stations.map((s, i) => {
+      const visitors = s.uniqueVisitors || s.unique_visitors || 0;
+      const pct = Math.round((visitors / maxVisitors) * 100);
+      const stationId = s.stationId || s.station_id || (i + 1);
+      const color = colors[i % colors.length];
+
+      return `
+        <div class="traffic-card" onclick="loadStationDetail('${stationId}', this)">
+          <div class="traffic-card-header">
+            <span class="traffic-station-name">站点 ${stationId}</span>
+            <span class="traffic-count" style="color:${color}">${visitors}</span>
+          </div>
+          <div class="traffic-bar">
+            <div class="traffic-bar-fill" style="width:${pct}%; background:${color}"></div>
+          </div>
+          <div class="traffic-detail" id="traffic-detail-${stationId}" style="display:none"></div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  async function loadStationDetail(stationId, cardEl) {
+    const detailEl = cardEl.querySelector('.traffic-detail');
+    if (detailEl.style.display === 'block') {
+      detailEl.style.display = 'none';
+      return;
+    }
+
+    detailEl.innerHTML = '<span>加载中...</span>';
+    detailEl.style.display = 'block';
+
+    try {
+      const res = await apiGet(`/stations/${stationId}`);
+      if (!res.ok) throw new Error('加载失败');
+      const data = await res.json();
+      const checkins = data.recentCheckins || data.checkins || data.recent || [];
+
+      if (!checkins.length) {
+        detailEl.innerHTML = '<span>暂无最近打卡</span>';
+        return;
+      }
+
+      detailEl.innerHTML = checkins.slice(0, 10).map(c => {
+        const time = c.timestamp || c.checkedInAt || c.created_at;
+        return `<div class="traffic-detail-item">${time ? new Date(time).toLocaleString() : '--'}</div>`;
+      }).join('');
+    } catch (err) {
+      detailEl.innerHTML = '<span>加载详情失败</span>';
+    }
+  }
+
+  // ===== UTILITIES =====
+  function escHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str || '';
+    return div.innerHTML;
+  }
+
+  function toLocalDatetime(isoStr) {
+    try {
+      const d = new Date(isoStr);
+      const offset = d.getTimezoneOffset();
+      const local = new Date(d.getTime() - offset * 60000);
+      return local.toISOString().slice(0, 16);
+    } catch (e) { return ''; }
+  }
+
+  // ===== KEYBOARD SUPPORT =====
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      if (document.getElementById('login-view').style.display !== 'none') {
+        if (document.getElementById('newpass-form').style.display !== 'none') {
+          handleNewPassword();
+        } else {
+          handleLogin();
+        }
+      }
+    }
+  });
+
+  // ===== INIT =====
+  // ===== LOTTERY MANAGEMENT =====
+  async function saveLotteryConfig() {
+    const gate = document.getElementById('lottery-gate-time').value;
+    const total = document.getElementById('lottery-total-winners').value;
+    // Convert datetime-local to ISO 8601 UTC
+    let afterPartyTime = null;
+    if (gate) {
+      afterPartyTime = new Date(gate).toISOString();
+    }
+    try {
+      const res = await apiPost('/lottery/config', {
+        afterPartyTime,
+        totalWinners: parseInt(total) || 5,
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || err.error || '保存失败');
+      }
+      document.getElementById('lottery-target').textContent = total || '5';
+      const st = document.getElementById('lottery-config-status');
+      st.style.display = 'inline';
+      setTimeout(() => st.style.display = 'none', 3000);
+    } catch (err) {
+      alert('保存设置失败: ' + (err.message || err));
+    }
+  }
+
+  async function loadLotteryConfig() {
+    try {
+      const res = await apiGet('/lottery/config');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.afterPartyTime) {
+          // Convert ISO back to datetime-local format (YYYY-MM-DDTHH:MM)
+          const dt = new Date(data.afterPartyTime);
+          const local = dt.getFullYear() + '-' + String(dt.getMonth()+1).padStart(2,'0') + '-' + String(dt.getDate()).padStart(2,'0') + 'T' + String(dt.getHours()).padStart(2,'0') + ':' + String(dt.getMinutes()).padStart(2,'0');
+          document.getElementById('lottery-gate-time').value = local;
+        }
+        document.getElementById('lottery-total-winners').value = data.totalWinners || 5;
+        document.getElementById('lottery-target').textContent = data.totalWinners || 5;
+      }
+    } catch {}
+  }
+
+  async function doLotteryDraw() {
+    const btn = document.getElementById('lottery-draw-btn');
+    const result = document.getElementById('lottery-draw-result');
+    const total = parseInt(document.getElementById('lottery-total-winners').value) || 5;
+
+    // Check if we've reached the limit
+    try {
+      const checkRes = await apiGet('/lottery/winners');
+      if (checkRes.ok) {
+        const checkData = await checkRes.json();
+        if ((checkData.winners || []).length >= total) {
+          result.textContent = '⚠️ 已达到设定的中奖人数上限';
+          result.style.color = 'var(--signal-5)';
+          btn.disabled = true;
+          btn.textContent = '已完成';
+          return;
+        }
+      }
+    } catch {}
+
+    btn.disabled = true;
+    btn.textContent = '抽奖中...';
+    result.textContent = '';
+    try {
+      const res = await apiPost('/lottery/draw', {});
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || err.error || `失败 (${res.status})`);
+      }
+      const data = await res.json();
+      result.textContent = `🎉 ${data.nickname}`;
+      result.style.color = 'var(--signal)';
+      loadLotteryWinners();
+    } catch (err) {
+      result.textContent = '❌ ' + (err.message || '抽奖失败');
+      result.style.color = 'var(--danger)';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '🎲 抽奖！';
+    }
+  }
+
+  async function addManualWinner() {
+    const input = document.getElementById('lottery-manual-nickname');
+    const btn = document.getElementById('lottery-manual-btn');
+    const result = document.getElementById('lottery-manual-result');
+    const nickname = (input.value || '').trim();
+    result.style.color = 'var(--signal)';
+    if (!nickname) {
+      result.textContent = '请输入用户名';
+      result.style.color = 'var(--danger)';
+      return;
+    }
+    btn.disabled = true;
+    btn.textContent = '添加中...';
+    result.textContent = '';
+    try {
+      const res = await apiPost('/lottery/winner', { nickname });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || err.error || `失败 (${res.status})`);
+      }
+      const data = await res.json();
+      result.textContent = `🎉 已添加 ${data.nickname}`;
+      result.style.color = 'var(--signal)';
+      input.value = '';
+      loadLotteryWinners();
+    } catch (err) {
+      result.textContent = '❌ ' + (err.message || '添加失败');
+      result.style.color = 'var(--danger)';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '➕ 添加为中奖人';
+    }
+  }
+
+  async function loadLotteryWinners() {
+    try {
+      const res = await apiGet('/lottery/winners');
+      if (!res.ok) throw new Error('加载失败');
+      const data = await res.json();
+      const winners = data.winners || [];
+      const total = document.getElementById('lottery-total-winners').value || 5;
+      document.getElementById('lottery-progress').innerHTML =
+        `已抽 <strong style="color:var(--signal)">${winners.length}</strong> / <span id="lottery-target">${total}</span> 人`;
+
+      const container = document.getElementById('lottery-winners-list');
+      if (!winners.length) {
+        container.innerHTML = '<p class="empty-state">暂无中奖者</p>';
+        return;
+      }
+      container.innerHTML = '<table><thead><tr><th>#</th><th>昵称</th><th>Tag ID</th><th>时间</th></tr></thead><tbody>' +
+        winners.map(w => `<tr><td>${w.drawSeq}</td><td><strong>${escHtml(w.nickname)}</strong></td><td style="color:var(--muted);font-size:0.85rem">${escHtml(w.tagId)}</td><td style="color:var(--muted);font-size:0.85rem">${new Date(w.drawnAt).toLocaleTimeString()}</td></tr>`).join('') +
+        '</tbody></table>';
+    } catch (err) {
+      document.getElementById('lottery-winners-list').innerHTML = `<p style="color:var(--danger)">${err.message}</p>`;
+    }
+  }
+
+  async function addCandidate() {
+    const input = document.getElementById('lottery-add-candidate');
+    const btn = document.getElementById('lottery-add-candidate-btn');
+    const result = document.getElementById('lottery-add-candidate-result');
+    const nickname = (input.value || '').trim();
+    result.style.color = 'var(--signal)';
+    if (!nickname) {
+      result.textContent = '请输入用户名';
+      result.style.color = 'var(--danger)';
+      return;
+    }
+    btn.disabled = true;
+    btn.textContent = '添加中...';
+    result.textContent = '';
+    try {
+      const res = await apiPost('/lottery/participant', { nickname });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || err.error || `失败 (${res.status})`);
+      }
+      result.textContent = `✅ 已添加 ${nickname}`;
+      result.style.color = 'var(--signal)';
+      input.value = '';
+      loadLotteryParticipants();
+    } catch (err) {
+      result.textContent = '❌ ' + (err.message || '添加失败');
+      result.style.color = 'var(--danger)';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '➕ 添加候选人';
+    }
+  }
+
+  async function loadLotteryParticipants() {
+    try {
+      const res = await apiGet('/lottery/participants');
+      if (!res.ok) throw new Error('加载失败');
+      const data = await res.json();
+      const ps = data.participants || [];
+      document.getElementById('lottery-participant-count').textContent = ps.length;
+      const container = document.getElementById('lottery-participants-list');
+      if (!ps.length) {
+        container.innerHTML = '<p class="empty-state">暂无参与者</p>';
+        return;
+      }
+      container.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:8px">' +
+        ps.map(p => `<span style="background:rgba(125,249,255,0.08);border:1px solid rgba(125,249,255,0.2);border-radius:8px;padding:4px 10px;font-size:0.85rem">${escHtml(p.nickname)}</span>`).join('') +
+        '</div>';
+    } catch (err) {
+      document.getElementById('lottery-participants-list').innerHTML = `<p style="color:var(--danger)">${err.message}</p>`;
+    }
+  }
+
+  // Load lottery data when switching to the tab
+  const origSwitchTab = switchTab;
+  switchTab = function(tab) {
+    origSwitchTab(tab);
+    if (tab === 'lottery') {
+      loadLotteryConfig();
+      loadLotteryWinners();
+      loadLotteryParticipants();
+    }
+  };
+
+  async function resetLottery() {
+    if (!confirm('⚠️ 确定要重置吗？这将删除所有已登记的昵称和所有中奖记录，不可恢复！')) return;
+    if (!confirm('再次确认：真的要清除所有抽奖数据吗？')) return;
+    const status = document.getElementById('lottery-reset-status');
+    status.textContent = '重置中...';
+    try {
+      const res = await apiPost('/lottery/reset', {});
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || err.error || `失败 (${res.status})`);
+      }
+      const data = await res.json();
+      status.textContent = `✓ 已重置，删除 ${data.deletedItems} 条记录`;
+      status.style.color = 'var(--success)';
+      // Refresh lists
+      loadLotteryWinners();
+      loadLotteryParticipants();
+      // Re-enable draw button
+      document.getElementById('lottery-draw-btn').disabled = false;
+      document.getElementById('lottery-draw-btn').textContent = '🎲 抽奖！';
+      document.getElementById('lottery-draw-result').textContent = '';
+    } catch (err) {
+      status.textContent = '❌ ' + (err.message || '重置失败');
+      status.style.color = 'var(--danger)';
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', initCognito);
+  </script>
+</body>
+</html>

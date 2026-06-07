@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Signal Over Noise — 粒子过场 (A·W·S·UG·3)</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; overflow: hidden; }
+    body {
+      background:
+        radial-gradient(circle at 70% 30%, rgba(125, 249, 255, 0.10), transparent 40%),
+        radial-gradient(circle at 30% 72%, rgba(185, 140, 255, 0.10), transparent 36%),
+        linear-gradient(135deg, #030610 0%, #08142a 50%, #03060d 100%);
+    }
+    #lottery-canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+    #tag {
+      position: fixed; top: 20px; left: 24px; z-index: 10;
+      font-family: "Share Tech Mono", Consolas, monospace; font-size: 13px;
+      letter-spacing: 0.1em; color: #b98cff;
+      border: 1px solid rgba(185,140,255,0.5); border-radius: 999px;
+      padding: 6px 14px; background: rgba(7,16,34,0.7);
+    }
+  </style>
+</head>
+<body>
+  <canvas id="lottery-canvas"></canvas>
+  <div id="tag">● 粒子过场预览 · A → W → S → UG → 3</div>
+
+  <script type="importmap">
+    { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+  </script>
+  <script type="module">
+    import { Scene } from './web/lottery/scene.mjs';
+    import { IntroParticles } from './web/lottery/intro-particles.mjs';
+
+    const scene = new Scene();
+    // Frame the glyphs (≈22 units tall) nicely.
+    if (scene.camera) {
+      scene.camera.position.set(0, 0, 46);
+      scene.camera.lookAt(0, 0, 0);
+      scene.camera.updateProjectionMatrix();
+    }
+
+    const intro = new IntroParticles({
+      sequence: ['A', 'W', 'S', 'UG', '3'],
+      count: 5000,
+      morphDuration: 1.6,
+      holdDuration: 1.6,
+      loop: true,
+    });
+    scene.add(intro);
+
+    window.__introScene = scene;
+  </script>
+</body>
+</html>
