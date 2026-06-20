@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AWS Service Icons Gallery</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', system-ui, sans-serif; background: #0a0e1a; color: #e2e8f0; min-height: 100vh; padding: 2rem; }
+    h1 { text-align: center; font-size: 1.8rem; margin-bottom: .5rem; color: #7df9ff; }
+    .subtitle { text-align: center; color: #64748b; font-size: .85rem; margin-bottom: 2rem; }
+    .category { margin-bottom: 2.5rem; }
+    .category h2 { font-size: 1rem; color: #a78bfa; margin-bottom: 1rem; padding-bottom: .5rem; border-bottom: 1px solid rgba(167,139,250,.2); }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 1rem; }
+    .icon-card {
+      display: flex; flex-direction: column; align-items: center; gap: .5rem;
+      padding: 1rem .5rem; border-radius: 10px;
+      background: rgba(13,25,50,.7); border: 1px solid rgba(125,249,255,.08);
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .icon-card:hover { border-color: rgba(125,249,255,.3); box-shadow: 0 0 15px rgba(125,249,255,.1); }
+    .icon-card img { width: 48px; height: 48px; object-fit: contain; }
+    .icon-card span { font-size: .65rem; color: #94a3b8; text-align: center; line-height: 1.3; word-break: break-word; }
+    .icon-card .path { font-size: .55rem; color: #475569; font-family: monospace; margin-top: 2px; }
+    .search { display: block; width: 100%; max-width: 500px; margin: 0 auto 2rem; padding: .7rem 1.2rem; border-radius: 8px; background: rgba(13,25,50,.8); border: 1px solid rgba(125,249,255,.15); color: #e2e8f0; font-size: .9rem; outline: none; }
+    .search:focus { border-color: #7df9ff; box-shadow: 0 0 0 3px rgba(125,249,255,.1); }
+    .count { text-align: center; color: #64748b; font-size: .8rem; margin-bottom: 1.5rem; }
+  </style>
+</head>
+<body>
+  <h1>☁️ AWS Service Icons</h1>
+  <p class="subtitle">Source: icon.icepanel.io/AWS/svg/ — Click any icon to open the SVG directly</p>
+  <input class="search" type="text" placeholder="🔍 搜索服务名称..." id="search" />
+  <p class="count" id="count"></p>
+  <div id="gallery"></div>
+
+  <script>
+    const BASE = 'https://icon.icepanel.io/AWS/svg/';
+
+    // Comprehensive list of AWS service icons by category (icepanel CDN paths)
+    const CATEGORIES = {
+      'Compute': [
+        ['Lambda.svg', 'Lambda'],
+        ['EC2.svg', 'EC2'],
+        ['Fargate.svg', 'Fargate'],
+        ['Elastic-Beanstalk.svg', 'Elastic Beanstalk'],
+        ['Batch.svg', 'Batch'],
+        ['Lightsail.svg', 'Lightsail'],
+        ['App-Runner.svg', 'App Runner'],
+        ['Outposts.svg', 'Outposts'],
+        ['Wavelength.svg', 'Wavelength'],
+        ['Local-Zones.svg', 'Local Zones'],
+        ['Bottlerocket.svg', 'Bottlerocket'],
+      ],
+      'Storage': [
+        ['Simple-Storage-Service.svg', 'S3'],
+        ['Elastic-Block-Store.svg', 'EBS'],
+        ['Elastic-File-System.svg', 'EFS'],
+        ['Backup.svg', 'Backup'],
+        ['Simple-Storage-Service-Glacier.svg', 'S3 Glacier'],
+        ['Storage-Gateway.svg', 'Storage Gateway'],
+        ['FSx.svg', 'FSx'],
+        ['Snow-Family.svg', 'Snow Family'],
+      ],
+      'Database': [
+        ['DynamoDB.svg', 'DynamoDB'],
+        ['Aurora.svg', 'Aurora'],
+        ['RDS.svg', 'RDS'],
+        ['ElastiCache.svg', 'ElastiCache'],
+        ['Neptune.svg', 'Neptune'],
+        ['DocumentDB.svg', 'DocumentDB'],
+        ['MemoryDB-for-Redis.svg', 'MemoryDB'],
+        ['Timestream.svg', 'Timestream'],
+        ['Keyspaces.svg', 'Keyspaces'],
+        ['QLDB.svg', 'QLDB'],
+      ],
+      'Machine-Learning': [
+        ['SageMaker.svg', 'SageMaker'],
+        ['Comprehend.svg', 'Comprehend'],
+        ['Rekognition.svg', 'Rekognition'],
+        ['Polly.svg', 'Polly'],
+        ['Translate.svg', 'Translate'],
+        ['Lex.svg', 'Lex'],
+        ['Textract.svg', 'Textract'],
+        ['Forecast.svg', 'Forecast'],
+        ['Kendra.svg', 'Kendra'],
+        ['Personalize.svg', 'Personalize'],
+        ['Transcribe.svg', 'Transcribe'],
+        ['DeepRacer.svg', 'DeepRacer'],
+        ['CodeWhisperer.svg', 'CodeWhisperer'],
+      ],
+      'Analytics': [
+        ['Athena.svg', 'Athena'],
+        ['Kinesis.svg', 'Kinesis'],
+        ['Redshift.svg', 'Redshift'],
+        ['Glue.svg', 'Glue'],
+        ['QuickSight.svg', 'QuickSight'],
+        ['EMR.svg', 'EMR'],
+        ['Data-Pipeline.svg', 'Data Pipeline'],
+        ['Lake-Formation.svg', 'Lake Formation'],
+        ['OpenSearch-Service.svg', 'OpenSearch'],
+        ['Managed-Streaming-for-Apache-Kafka.svg', 'MSK'],
+        ['CloudSearch.svg', 'CloudSearch'],
+        ['Data-Exchange.svg', 'Data Exchange'],
+        ['Clean-Rooms.svg', 'Clean Rooms'],
+      ],
+      'Networking-Content-Delivery': [
+        ['CloudFront.svg', 'CloudFront'],
+        ['Virtual-Private-Cloud.svg', 'VPC'],
+        ['Route-53.svg', 'Route 53'],
+        ['Elastic-Load-Balancing.svg', 'ELB'],
+        ['Direct-Connect.svg', 'Direct Connect'],
+        ['Global-Accelerator.svg', 'Global Accelerator'],
+        ['API-Gateway.svg', 'API Gateway'],
+        ['Transit-Gateway.svg', 'Transit Gateway'],
+        ['PrivateLink.svg', 'PrivateLink'],
+        ['App-Mesh.svg', 'App Mesh'],
+        ['Cloud-Map.svg', 'Cloud Map'],
+      ],
+      'Containers': [
+        ['Elastic-Container-Service.svg', 'ECS'],
+        ['Elastic-Kubernetes-Service.svg', 'EKS'],
+        ['Elastic-Container-Registry.svg', 'ECR'],
+      ],
+      'Security-Identity-Compliance': [
+        ['Cognito.svg', 'Cognito'],
+        ['Identity-and-Access-Management.svg', 'IAM'],
+        ['Key-Management-Service.svg', 'KMS'],
+        ['Secrets-Manager.svg', 'Secrets Manager'],
+        ['WAF.svg', 'WAF'],
+        ['Shield.svg', 'Shield'],
+        ['GuardDuty.svg', 'GuardDuty'],
+        ['Inspector.svg', 'Inspector'],
+        ['Macie.svg', 'Macie'],
+        ['Certificate-Manager.svg', 'ACM'],
+        ['Directory-Service.svg', 'Directory Service'],
+        ['Firewall-Manager.svg', 'Firewall Manager'],
+        ['Security-Hub.svg', 'Security Hub'],
+        ['Detective.svg', 'Detective'],
+      ],
+      'Management-Governance': [
+        ['CloudWatch.svg', 'CloudWatch'],
+        ['CloudFormation.svg', 'CloudFormation'],
+        ['Systems-Manager.svg', 'Systems Manager'],
+        ['CloudTrail.svg', 'CloudTrail'],
+        ['Config.svg', 'Config'],
+        ['Organizations.svg', 'Organizations'],
+        ['Service-Catalog.svg', 'Service Catalog'],
+        ['Trusted-Advisor.svg', 'Trusted Advisor'],
+        ['Control-Tower.svg', 'Control Tower'],
+        ['Well-Architected-Tool.svg', 'Well-Architected'],
+        ['Health-Dashboard.svg', 'Health Dashboard'],
+        ['Launch-Wizard.svg', 'Launch Wizard'],
+      ],
+      'App-Integration': [
+        ['Step-Functions.svg', 'Step Functions'],
+        ['Simple-Notification-Service.svg', 'SNS'],
+        ['Simple-Queue-Service.svg', 'SQS'],
+        ['EventBridge.svg', 'EventBridge'],
+        ['AppFlow.svg', 'AppFlow'],
+        ['Managed-Workflows-for-Apache-Airflow.svg', 'MWAA'],
+        ['MQ.svg', 'MQ'],
+      ],
+      'Developer-Tools': [
+        ['CodePipeline.svg', 'CodePipeline'],
+        ['CodeBuild.svg', 'CodeBuild'],
+        ['CodeCommit.svg', 'CodeCommit'],
+        ['CodeDeploy.svg', 'CodeDeploy'],
+        ['Cloud9.svg', 'Cloud9'],
+        ['X-Ray.svg', 'X-Ray'],
+        ['CodeArtifact.svg', 'CodeArtifact'],
+        ['CodeStar.svg', 'CodeStar'],
+      ],
+      'Front-End-Web-Mobile': [
+        ['Amplify.svg', 'Amplify'],
+        ['Device-Farm.svg', 'Device Farm'],
+        ['AppSync.svg', 'AppSync'],
+        ['Location-Service.svg', 'Location Service'],
+      ],
+      'Media-Services': [
+        ['Elemental-MediaConvert.svg', 'MediaConvert'],
+        ['Elemental-MediaLive.svg', 'MediaLive'],
+        ['Elemental-MediaPackage.svg', 'MediaPackage'],
+        ['Interactive-Video-Service.svg', 'IVS'],
+      ],
+      'Internet-of-Things': [
+        ['IoT-Core.svg', 'IoT Core'],
+        ['IoT-Greengrass.svg', 'Greengrass'],
+        ['IoT-SiteWise.svg', 'IoT SiteWise'],
+        ['IoT-Events.svg', 'IoT Events'],
+        ['IoT-Analytics.svg', 'IoT Analytics'],
+      ],
+      'Business-Applications': [
+        ['Connect.svg', 'Connect'],
+        ['WorkSpaces.svg', 'WorkSpaces'],
+        ['Chime.svg', 'Chime'],
+        ['WorkDocs.svg', 'WorkDocs'],
+        ['WorkMail.svg', 'WorkMail'],
+      ],
+      'End-User-Computing': [
+        ['AppStream.svg', 'AppStream 2.0'],
+      ],
+      'Migration-Transfer': [
+        ['Database-Migration-Service.svg', 'DMS'],
+        ['Migration-Hub.svg', 'Migration Hub'],
+        ['DataSync.svg', 'DataSync'],
+        ['Transfer-Family.svg', 'Transfer Family'],
+      ],
+      'Cost-Management': [
+        ['Cost-Explorer.svg', 'Cost Explorer'],
+        ['Budgets.svg', 'Budgets'],
+      ],
+    };
+
+    // Bedrock is NOT on IcePanel. We include it as a special inline SVG card.
+    const BEDROCK_NOTE = '⚠️ Amazon Bedrock 图标未在 IcePanel CDN 收录。可从 AWS 官方图标包获取: aws.amazon.com/architecture/icons/';
+
+    function render(filter = '') {
+      const gallery = document.getElementById('gallery');
+      const lc = filter.toLowerCase();
+      let total = 0;
+      let html = '';
+
+      for (const [cat, icons] of Object.entries(CATEGORIES)) {
+        const filtered = icons.filter(([, name]) => !lc || name.toLowerCase().includes(lc) || cat.toLowerCase().includes(lc));
+        if (!filtered.length) continue;
+        total += filtered.length;
+        html += `<div class="category"><h2>${cat.replace(/-/g, ' ')}</h2><div class="grid">`;
+        for (const [file, name] of filtered) {
+          const url = BASE + cat + '/' + file;
+          html += `<a class="icon-card" href="${url}" target="_blank" rel="noopener">
+            <img src="${url}" alt="${name}" loading="lazy" onerror="this.style.opacity='.3';this.alt='404'" />
+            <span>${name}</span>
+            <span class="path">${cat}/${file}</span>
+          </a>`;
+        }
+        html += '</div></div>';
+      }
+
+      // Special: Bedrock notice
+      if (!lc || 'bedrock'.includes(lc)) {
+        html += `<div class="category"><h2>🆕 Generative AI (not on IcePanel)</h2><div class="grid">
+          <div class="icon-card" style="border-color:rgba(251,191,36,.3)">
+            <svg width="48" height="48" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect width="80" height="80" rx="8" fill="#232F3E"/>
+              <path d="M40 18L22 28v24l18 10 18-10V28L40 18z" fill="#7df9ff" opacity=".15" stroke="#7df9ff" stroke-width="2"/>
+              <path d="M40 18v34M22 28l18 10 18-10" stroke="#7df9ff" stroke-width="1.5" opacity=".6"/>
+              <circle cx="40" cy="40" r="8" fill="#7df9ff" opacity=".3" stroke="#7df9ff" stroke-width="1.5"/>
+              <text x="40" y="72" text-anchor="middle" fill="#e2e8f0" font-size="7" font-family="sans-serif">Bedrock</text>
+            </svg>
+            <span>Amazon Bedrock</span>
+            <span class="path" style="color:#fbbf24">Not on IcePanel CDN</span>
+          </div>
+          <div class="icon-card" style="border-color:rgba(251,191,36,.3)">
+            <svg width="48" height="48" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect width="80" height="80" rx="8" fill="#232F3E"/>
+              <rect x="20" y="25" width="40" height="30" rx="4" fill="#7df9ff" opacity=".15" stroke="#7df9ff" stroke-width="1.5"/>
+              <path d="M30 35h20M30 42h15M30 49h10" stroke="#7df9ff" stroke-width="1.5" opacity=".7"/>
+              <text x="40" y="72" text-anchor="middle" fill="#e2e8f0" font-size="7" font-family="sans-serif">Q</text>
+            </svg>
+            <span>Amazon Q</span>
+            <span class="path" style="color:#fbbf24">Not on IcePanel CDN</span>
+          </div>
+        </div>
+        <p style="color:#fbbf24;font-size:.75rem;margin-top:.75rem">💡 Bedrock / Q / 其他 2023+ 新服务图标请从 <a href="https://aws.amazon.com/architecture/icons/" target="_blank" style="color:#7df9ff">AWS 官方图标包</a> 下载</p>
+        </div>`;
+      }
+
+      gallery.innerHTML = html;
+      document.getElementById('count').textContent = `共 ${total} 个图标（IcePanel CDN）`;
+    }
+
+    document.getElementById('search').addEventListener('input', (e) => render(e.target.value));
+    render();
+  </script>
+</body>
+</html>

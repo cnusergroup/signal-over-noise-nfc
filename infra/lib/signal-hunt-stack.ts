@@ -71,7 +71,7 @@ export class SignalHuntStack extends cdk.Stack {
       handler: 'index.handler',
       code: lambda.Code.fromAsset('../lambda/checkin'),
       memorySize: 128,
-      timeout: cdk.Duration.seconds(10),
+      timeout: cdk.Duration.seconds(29),
       architecture: lambda.Architecture.ARM_64,
       environment: {
         TABLE_NAME: signalHuntTable.tableName,
@@ -183,6 +183,25 @@ export class SignalHuntStack extends cdk.Stack {
       `https://cognito-idp.${this.region}.amazonaws.com/${userPool.userPoolId}`,
       { jwtAudience: [userPoolClient.userPoolClientId] }
     );
+
+    // Grant the check-in Lambda permission to manage staff/exhibitor Cognito
+    // users (account management UI in admin.html).
+    checkinHandler.addEnvironment('USER_POOL_ID', userPool.userPoolId);
+    checkinHandler.addToRolePolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: [
+        'cognito-idp:AdminCreateUser',
+        'cognito-idp:AdminSetUserPassword',
+        'cognito-idp:AdminAddUserToGroup',
+        'cognito-idp:AdminRemoveUserFromGroup',
+        'cognito-idp:AdminDeleteUser',
+        'cognito-idp:AdminGetUser',
+        'cognito-idp:AdminListGroupsForUser',
+        'cognito-idp:ListUsers',
+        'cognito-idp:ListUsersInGroup',
+      ],
+      resources: [userPool.userPoolArn],
+    }));
 
     new cr.AwsCustomResource(this, 'CreateAdminUser', {
       onCreate: {
@@ -490,6 +509,54 @@ export class SignalHuntStack extends cdk.Stack {
     // POST /lottery/reset - Reset all lottery data (JWT required, admin group)
     httpApi.addRoutes({
       path: '/lottery/reset',
+      methods: [apigatewayv2.HttpMethod.POST],
+      integration: checkinIntegration,
+      authorizer: jwtAuthorizer,
+    });
+
+    // POST /lottery/winner/delete - Delete winners by nickname (JWT required, admin group)
+    httpApi.addRoutes({
+      path: '/lottery/winner/delete',
+      methods: [apigatewayv2.HttpMethod.POST],
+      integration: checkinIntegration,
+      authorizer: jwtAuthorizer,
+    });
+
+    // POST /admin/reset-stats - Reset participant statistics (JWT required, admin group)
+    httpApi.addRoutes({
+      path: '/admin/reset-stats',
+      methods: [apigatewayv2.HttpMethod.POST],
+      integration: checkinIntegration,
+      authorizer: jwtAuthorizer,
+    });
+
+    // GET /admin/users - List staff/exhibitor accounts (JWT required, admin group)
+    httpApi.addRoutes({
+      path: '/admin/users',
+      methods: [apigatewayv2.HttpMethod.GET],
+      integration: checkinIntegration,
+      authorizer: jwtAuthorizer,
+    });
+
+    // POST /admin/users - Create a staff/exhibitor account (JWT required, admin group)
+    httpApi.addRoutes({
+      path: '/admin/users',
+      methods: [apigatewayv2.HttpMethod.POST],
+      integration: checkinIntegration,
+      authorizer: jwtAuthorizer,
+    });
+
+    // POST /admin/users/password - Reset an account password (JWT required, admin group)
+    httpApi.addRoutes({
+      path: '/admin/users/password',
+      methods: [apigatewayv2.HttpMethod.POST],
+      integration: checkinIntegration,
+      authorizer: jwtAuthorizer,
+    });
+
+    // POST /admin/users/delete - Delete an account (JWT required, admin group)
+    httpApi.addRoutes({
+      path: '/admin/users/delete',
       methods: [apigatewayv2.HttpMethod.POST],
       integration: checkinIntegration,
       authorizer: jwtAuthorizer,

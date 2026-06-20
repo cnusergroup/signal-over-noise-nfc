@@ -786,6 +786,7 @@
         <button class="tab-btn" data-tab="leaderboard" onclick="switchTab('leaderboard')">排行榜</button>
         <button class="tab-btn" data-tab="traffic" onclick="switchTab('traffic')">流量</button>
         <button class="tab-btn" data-tab="lottery" onclick="switchTab('lottery')">🎲 抽奖</button>
+        <button class="tab-btn" data-tab="accounts" onclick="switchTab('accounts')">👥 账号</button>
       </nav>
 
       <!-- Tab Content -->
@@ -822,6 +823,20 @@
             <span>加载统计数据...</span>
           </div>
           <div id="overview-error" class="error-banner" style="display:none"></div>
+
+          <!-- Danger zone: reset statistics -->
+          <div class="form-panel" style="margin-top:2rem;border-color:rgba(248,113,113,.3)">
+            <div class="form-panel-header">
+              <h3 style="color:var(--danger)">⚠ 危险操作</h3>
+            </div>
+            <p style="font-size:.85rem;color:var(--muted);line-height:1.6;margin-bottom:1rem">
+              重置统计数据将<strong style="color:var(--danger)">永久清空</strong>所有参与者活动：站点 2–10 打卡、入场打卡、集邮、排行榜、组合奖励、全部任务（含配置）、抽奖昵称与中奖记录。<br />
+              <span style="color:var(--signal-3)">保留</span>：标签注册表、扫描器与组合配置、抽奖设置，以及所有人的「站点 1 默认打卡」基线。<br />
+              <strong>此操作不可恢复。</strong>
+            </p>
+            <button class="btn btn-danger" id="reset-stats-btn" onclick="handleResetStats()">重置统计数据</button>
+            <span id="reset-stats-result" style="margin-left:1rem;font-size:.85rem"></span>
+          </div>
         </section>
 
         <!-- MISSIONS TAB -->
@@ -1061,11 +1076,15 @@
               <span class="data-card-title">触发抽奖</span>
               <span id="lottery-progress" style="color:var(--muted);font-size:0.85rem">已抽 0 / <span id="lottery-target">5</span> 人</span>
             </div>
-            <div style="padding:1rem;display:flex;gap:1rem;align-items:center">
-              <button class="btn btn-primary" id="lottery-draw-btn" onclick="doLotteryDraw()" style="font-size:1.1rem;padding:0.8rem 2rem">
+            <div style="padding:1rem;display:flex;gap:1rem;align-items:center;flex-wrap:wrap">
+              <div class="form-group" style="margin:0">
+                <label class="form-label" for="lottery-draw-count">每次抽取人数</label>
+                <input type="number" id="lottery-draw-count" class="form-input" min="1" value="1" style="width:120px" />
+              </div>
+              <button class="btn btn-primary" id="lottery-draw-btn" onclick="doLotteryDraw()" style="font-size:1.1rem;padding:0.8rem 2rem;align-self:flex-end">
                 🎲 抽奖！
               </button>
-              <span id="lottery-draw-result" style="font-size:1.2rem;font-weight:700;color:var(--signal)"></span>
+              <span id="lottery-draw-result" style="font-size:1.2rem;font-weight:700;color:var(--signal);align-self:flex-end"></span>
             </div>
           </div>
 
@@ -1081,6 +1100,31 @@
               <span id="lottery-manual-result" style="font-weight:600;color:var(--signal)"></span>
             </div>
             <small style="color:var(--muted);padding:0 1rem 1rem;display:block">手动指定的中奖人会和随机抽奖一样推送到大屏并播放揭晓动画（无需是已登记的参与者）。</small>
+          </div>
+
+          <!-- 彩蛋抽奖 (easter egg: draw from a fixed roster) -->
+          <div class="data-card" style="margin-bottom:1.5rem;border-color:rgba(167,139,250,0.4);background:rgba(167,139,250,0.04)">
+            <div class="data-card-header">
+              <span class="data-card-title" style="color:var(--signal-2)">🥚 彩蛋抽奖</span>
+              <button class="btn btn-ghost btn-sm" onclick="toggleEasterEgg()" id="egg-toggle-btn">展开</button>
+            </div>
+            <div id="egg-body" style="padding:1rem;display:none">
+              <div class="form-group" style="margin-bottom:1rem">
+                <label class="form-label" for="egg-roster">固定人员名单（每行一个昵称）</label>
+                <textarea id="egg-roster" class="form-input" rows="6" placeholder="张三&#10;李四&#10;王五" style="font-family:'Share Tech Mono',monospace;line-height:1.7;resize:vertical"></textarea>
+                <small style="color:var(--muted);margin-top:4px;display:block">名单仅保存在本浏览器（localStorage），不会上传服务器。</small>
+              </div>
+              <div style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap">
+                <button class="btn btn-primary" id="egg-draw-btn" onclick="doEasterEggDraw()" style="font-size:1.05rem;padding:0.8rem 2rem;background:linear-gradient(135deg,rgba(167,139,250,.25),rgba(167,139,250,.1));border-color:var(--signal-2);color:var(--signal-2)">
+                  🥚 彩蛋抽奖（下一位）
+                </button>
+                <button class="btn btn-ghost" id="egg-reset-btn" onclick="resetEasterEgg()" style="padding:0.8rem 1.4rem">
+                  ♻️ 重置彩蛋
+                </button>
+                <span id="egg-draw-result" style="font-size:1.1rem;font-weight:700;color:var(--signal-2)"></span>
+              </div>
+              <small style="color:var(--muted);margin-top:0.75rem;display:block">每点一次抽 1 位，固定顺序：<strong style="color:var(--signal-2)">萍姐 → Liya → 琳小轩</strong>。第一位（萍姐）抽出时大屏会先飘出彩蛋预告文字；琳小轩压轴并在大屏永久定格。</small>
+            </div>
           </div>
 
           <div class="data-card">
@@ -1121,6 +1165,64 @@
               <span id="lottery-reset-status" style="color:var(--muted);font-size:0.85rem"></span>
             </div>
           </div>
+        </section>
+
+        <!-- ACCOUNTS TAB -->
+        <section id="tab-accounts" class="tab-panel">
+          <div class="section-header">
+            <h2>👥 账号管理</h2>
+            <button class="btn btn-ghost btn-sm" onclick="loadAccounts()">刷新</button>
+          </div>
+
+          <!-- Create account form -->
+          <div class="form-panel">
+            <div class="form-panel-header"><h3>新增账号</h3></div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="acct-role">角色</label>
+                <select id="acct-role" onchange="onAcctRoleChange()">
+                  <option value="staff">志愿者 (staff)</option>
+                  <option value="exhibitor">展商 (exhibitor)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="acct-email">邮箱</label>
+                <input type="email" id="acct-email" placeholder="user@example.com" autocomplete="off" />
+              </div>
+              <div class="form-group" id="acct-station-group" style="display:none">
+                <label for="acct-station">站点编号</label>
+                <select id="acct-station">
+                  <option value="1">站点 1</option><option value="2">站点 2</option>
+                  <option value="3">站点 3</option><option value="4">站点 4</option>
+                  <option value="5">站点 5</option><option value="6">站点 6</option>
+                  <option value="7">站点 7</option><option value="8">站点 8</option>
+                  <option value="9">站点 9</option><option value="10">站点 10</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="acct-password">初始密码</label>
+                <input type="text" id="acct-password" placeholder="至少8位，含大小写字母和数字" autocomplete="off" />
+              </div>
+            </div>
+            <div class="form-actions">
+              <button class="btn btn-primary" id="acct-create-btn" onclick="createAccount()">创建账号</button>
+              <span id="acct-create-result" style="margin-left:1rem;font-size:.85rem"></span>
+            </div>
+            <small style="color:var(--muted);display:block;margin-top:.5rem">密码由你设定，创建后即为永久密码（无需首次改密）。请妥善记录，系统无法事后查看已设密码。</small>
+          </div>
+
+          <!-- Accounts list -->
+          <div class="table-container" style="margin-top:1.5rem">
+            <table>
+              <thead>
+                <tr><th>角色</th><th>邮箱</th><th>站点</th><th>状态</th><th>操作</th></tr>
+              </thead>
+              <tbody id="accounts-tbody">
+                <tr><td colspan="5" style="text-align:center;color:var(--muted)">加载中...</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div id="accounts-error" class="error-banner" style="display:none;margin-top:1rem"></div>
         </section>
 
       </main>
@@ -1384,6 +1486,7 @@
       case 'combos': loadCombos(); break;
       case 'leaderboard': loadLeaderboard(); break;
       case 'traffic': loadTraffic(); break;
+      case 'accounts': loadAccounts(); break;
     }
   }
 
@@ -1429,6 +1532,147 @@
     } catch (err) {
       hideEl('overview-loading');
       showBannerError('overview-error', err.message || '加载统计数据失败。', 'loadOverview');
+    }
+  }
+
+  // ===== RESET STATISTICS (danger) =====
+  async function handleResetStats() {
+    const btn = document.getElementById('reset-stats-btn');
+    const result = document.getElementById('reset-stats-result');
+
+    // Double confirmation for this destructive, irreversible action.
+    if (!confirm('确定要重置所有统计数据吗？\n\n将永久清空打卡（站点1除外）、任务、抽奖、排行榜等数据，且不可恢复。')) return;
+    const typed = prompt('请输入 RESET 以确认执行重置：');
+    if (typed !== 'RESET') {
+      result.style.color = 'var(--muted)';
+      result.textContent = '已取消。';
+      return;
+    }
+
+    btn.disabled = true;
+    result.style.color = 'var(--muted)';
+    result.textContent = '正在重置...';
+    try {
+      const res = await apiRequest('POST', '/admin/reset-stats');
+      if (!res.ok) {
+        let msg = '重置失败 (' + res.status + ')';
+        try { const e = await res.json(); if (e && e.message) msg = e.message; } catch (_) {}
+        throw new Error(msg);
+      }
+      const data = await res.json();
+      const count = (data && data.deletedCount != null) ? data.deletedCount : '?';
+      result.style.color = 'var(--success)';
+      result.textContent = `✓ 重置完成，已清除 ${count} 条记录。`;
+      loadOverview();
+    } catch (err) {
+      result.style.color = 'var(--danger)';
+      result.textContent = '✗ ' + (err.message || '重置失败');
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  // ===== ACCOUNTS (staff / exhibitor) =====
+  function onAcctRoleChange() {
+    const role = document.getElementById('acct-role').value;
+    document.getElementById('acct-station-group').style.display = role === 'exhibitor' ? '' : 'none';
+  }
+
+  async function loadAccounts() {
+    const tbody = document.getElementById('accounts-tbody');
+    hideEl('accounts-error');
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted)">加载中...</td></tr>';
+    try {
+      const res = await apiGet('/admin/users');
+      if (!res.ok) {
+        let msg = '加载失败 (' + res.status + ')';
+        try { const e = await res.json(); if (e && e.message) msg = e.message; } catch (_) {}
+        throw new Error(msg);
+      }
+      const data = await res.json();
+      const users = data.users || [];
+      if (!users.length) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted)">暂无志愿者/展商账号</td></tr>';
+        return;
+      }
+      const roleLabel = (g) => g === 'staff' ? '志愿者' : (g === 'exhibitor' ? '展商' : g);
+      const statusLabel = (s) => s === 'CONFIRMED' ? '可用' : (s === 'FORCE_CHANGE_PASSWORD' ? '待改密' : (s || '-'));
+      tbody.innerHTML = users.map(u => `
+        <tr>
+          <td><span class="badge badge-type">${roleLabel(u.group)}</span></td>
+          <td>${escHtml(u.email)}</td>
+          <td>${u.stationId ? ('站点 ' + escHtml(u.stationId)) : '-'}</td>
+          <td>${statusLabel(u.status)}</td>
+          <td>
+            <button class="btn btn-ghost btn-sm" onclick="resetAccountPassword('${escHtml(u.email)}')">重置密码</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteAccount('${escHtml(u.email)}')">删除</button>
+          </td>
+        </tr>
+      `).join('');
+    } catch (err) {
+      tbody.innerHTML = '';
+      showBannerError('accounts-error', err.message || '加载账号失败。', 'loadAccounts');
+    }
+  }
+
+  async function createAccount() {
+    const role = document.getElementById('acct-role').value;
+    const email = document.getElementById('acct-email').value.trim();
+    const password = document.getElementById('acct-password').value;
+    const stationId = document.getElementById('acct-station').value;
+    const btn = document.getElementById('acct-create-btn');
+    const result = document.getElementById('acct-create-result');
+
+    result.style.color = 'var(--danger)';
+    if (!email) { result.textContent = '请输入邮箱'; return; }
+    if (!password || password.length < 8) { result.textContent = '密码至少 8 位'; return; }
+
+    const body = { email, group: role, password };
+    if (role === 'exhibitor') body.stationId = stationId;
+
+    btn.disabled = true;
+    result.style.color = 'var(--muted)';
+    result.textContent = '创建中...';
+    try {
+      const res = await apiPost('/admin/users', body);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || data.error || ('失败 (' + res.status + ')'));
+      result.style.color = 'var(--success)';
+      result.textContent = '✓ 已创建 ' + email;
+      document.getElementById('acct-email').value = '';
+      document.getElementById('acct-password').value = '';
+      loadAccounts();
+    } catch (err) {
+      result.style.color = 'var(--danger)';
+      result.textContent = '✗ ' + (err.message || '创建失败');
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  async function resetAccountPassword(email) {
+    const pw = prompt('为 ' + email + ' 设置新密码（至少 8 位，含大小写字母和数字）：');
+    if (pw == null) return;
+    if (pw.length < 8) { alert('密码至少 8 位'); return; }
+    try {
+      const res = await apiPost('/admin/users/password', { email, password: pw });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || data.error || ('失败 (' + res.status + ')'));
+      alert('✓ 已重置 ' + email + ' 的密码');
+    } catch (err) {
+      alert('✗ ' + (err.message || '重置失败'));
+    }
+  }
+
+  async function deleteAccount(email) {
+    if (!confirm('确定删除账号 ' + email + ' 吗？此操作不可恢复。')) return;
+    try {
+      const res = await apiPost('/admin/users/delete', { email });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || data.error || ('失败 (' + res.status + ')'));
+      loadAccounts();
+    } catch (err) {
+      alert('✗ ' + (err.message || '删除失败'));
     }
   }
 
@@ -1952,13 +2196,17 @@
     const btn = document.getElementById('lottery-draw-btn');
     const result = document.getElementById('lottery-draw-result');
     const total = parseInt(document.getElementById('lottery-total-winners').value) || 5;
+    let perDraw = parseInt(document.getElementById('lottery-draw-count').value) || 1;
+    if (perDraw < 1) perDraw = 1;
 
-    // Check if we've reached the limit
+    // Check remaining slots against the configured total winners.
+    let alreadyDrawn = 0;
     try {
       const checkRes = await apiGet('/lottery/winners');
       if (checkRes.ok) {
         const checkData = await checkRes.json();
-        if ((checkData.winners || []).length >= total) {
+        alreadyDrawn = (checkData.winners || []).length;
+        if (alreadyDrawn >= total) {
           result.textContent = '⚠️ 已达到设定的中奖人数上限';
           result.style.color = 'var(--signal-5)';
           btn.disabled = true;
@@ -1968,17 +2216,23 @@
       }
     } catch {}
 
+    // Don't exceed the configured total this batch.
+    const remaining = total - alreadyDrawn;
+    const count = Math.min(perDraw, remaining);
+
     btn.disabled = true;
     btn.textContent = '抽奖中...';
     result.textContent = '';
     try {
-      const res = await apiPost('/lottery/draw', {});
+      const res = await apiPost('/lottery/draw', { count });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.message || err.error || `失败 (${res.status})`);
       }
       const data = await res.json();
-      result.textContent = `🎉 ${data.nickname}`;
+      const winners = data.winners || (data.nickname ? [{ nickname: data.nickname }] : []);
+      const names = winners.map(w => w.nickname).join('、');
+      result.textContent = `🎉 ${names}`;
       result.style.color = 'var(--signal)';
       loadLotteryWinners();
     } catch (err) {
@@ -2021,6 +2275,105 @@
     } finally {
       btn.disabled = false;
       btn.textContent = '➕ 添加为中奖人';
+    }
+  }
+
+  // ===== 彩蛋抽奖 (easter egg) =====
+  const EGG_ROSTER_KEY = 'signalhunt_egg_roster';
+
+  function toggleEasterEgg() {
+    const body = document.getElementById('egg-body');
+    const btn = document.getElementById('egg-toggle-btn');
+    const open = body.style.display !== 'none';
+    if (open) {
+      body.style.display = 'none';
+      btn.textContent = '展开';
+    } else {
+      body.style.display = 'block';
+      btn.textContent = '收起';
+      // Restore saved roster from localStorage.
+      const saved = localStorage.getItem(EGG_ROSTER_KEY);
+      const ta = document.getElementById('egg-roster');
+      if (saved != null && !ta.value) ta.value = saved;
+    }
+  }
+
+  // Cryptographically-influenced random integer in [0, max).
+  function secureRandomInt(max) {
+    if (window.crypto && window.crypto.getRandomValues) {
+      const a = new Uint32Array(1);
+      window.crypto.getRandomValues(a);
+      return a[0] % max;
+    }
+    return Math.floor(Math.random() * max);
+  }
+
+  const EGG_FINAL_WINNER = '琳小轩';
+  // Fixed easter-egg reveal sequence. Drawn ONE per click, in this order:
+  // 萍姐 → Liya → 琳小轩 (grand finale, stays on screen permanently).
+  const EGG_SEQUENCE = ['萍姐', 'Liya', '琳小轩'];
+
+  async function doEasterEggDraw() {
+    const btn = document.getElementById('egg-draw-btn');
+    const result = document.getElementById('egg-draw-result');
+
+    // Determine which egg names have already been drawn (robust against reload):
+    // pick the first name in the sequence that is not yet a winner.
+    let alreadyWon = [];
+    try {
+      const chk = await apiGet('/lottery/winners');
+      if (chk.ok) {
+        const d = await chk.json();
+        alreadyWon = (d.winners || []).map(w => w.nickname);
+      }
+    } catch (_) {}
+
+    const next = EGG_SEQUENCE.find(n => !alreadyWon.includes(n));
+    if (!next) {
+      result.style.color = 'var(--signal-5)';
+      result.textContent = '🥚 彩蛋已全部抽完（萍姐 / Liya / 琳小轩）';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = '抽奖中...';
+    result.style.color = 'var(--signal-2)';
+    result.textContent = '';
+    try {
+      const res = await apiPost('/lottery/winner', { nickname: next });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || data.error || `失败 (${res.status})`);
+      const pos = EGG_SEQUENCE.indexOf(next) + 1;
+      result.textContent = `🥚🎉 第 ${pos}/${EGG_SEQUENCE.length} 位：${next}`;
+      loadLotteryWinners();
+    } catch (err) {
+      result.style.color = 'var(--danger)';
+      result.textContent = '❌ ' + (err.message || '彩蛋抽奖失败');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '🥚 彩蛋抽奖（下一位）';
+    }
+  }
+
+  async function resetEasterEgg() {
+    if (!confirm('重置彩蛋？将清除「萍姐 / Liya / 琳小轩」的中奖记录，以便重新抽取。')) return;
+    const btn = document.getElementById('egg-reset-btn');
+    const result = document.getElementById('egg-draw-result');
+    btn.disabled = true;
+    btn.textContent = '重置中...';
+    try {
+      const res = await apiPost('/lottery/winner/delete', { nicknames: EGG_SEQUENCE });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || data.error || `失败 (${res.status})`);
+      result.style.color = 'var(--success)';
+      result.textContent = `♻️ 已重置彩蛋（清除 ${data.deleted != null ? data.deleted : '?'} 条），可重新抽取`;
+      loadLotteryWinners();
+    } catch (err) {
+      result.style.color = 'var(--danger)';
+      result.textContent = '❌ ' + (err.message || '重置失败');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '♻️ 重置彩蛋';
     }
   }
 

@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>入口汇总 | Signal Hunt</title>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #050914;
+      --panel: rgba(13, 25, 50, 0.7);
+      --panel-border: rgba(125, 249, 255, 0.12);
+      --signal: #7df9ff;
+      --signal-2: #a78bfa;
+      --signal-3: #34d399;
+      --signal-4: #f472b6;
+      --signal-5: #fbbf24;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --glow: 0 0 20px rgba(125, 249, 255, 0.15);
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.6;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse at 20% 30%, rgba(125, 249, 255, 0.04) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 70%, rgba(167, 139, 250, 0.04) 0%, transparent 50%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .wrap {
+      position: relative;
+      z-index: 1;
+      flex: 1;
+      width: 100%;
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 4rem 1.5rem 2rem;
+    }
+
+    header { text-align: center; margin-bottom: 3rem; }
+
+    .eyebrow {
+      letter-spacing: 0.3em;
+      font-size: 11px;
+      font-family: 'Share Tech Mono', monospace;
+      color: rgba(234, 246, 255, 0.55);
+      text-transform: uppercase;
+      margin-bottom: 0.75rem;
+    }
+
+    h1 {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: clamp(1.8rem, 5vw, 2.8rem);
+      color: var(--signal);
+      text-shadow: 0 0 18px rgba(125, 249, 255, 0.4);
+      letter-spacing: 0.04em;
+    }
+
+    .subtitle { color: var(--muted); font-size: 0.9rem; margin-top: 0.5rem; }
+
+    .section-label {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--signal-2);
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      margin: 2rem 0 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid rgba(167, 139, 250, 0.2);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1.25rem;
+    }
+
+    .card {
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      padding: 1.6rem;
+      border-radius: 14px;
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      backdrop-filter: blur(12px);
+      text-decoration: none;
+      color: var(--text);
+      transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+      cursor: pointer;
+    }
+
+    .card:hover {
+      border-color: rgba(125, 249, 255, 0.35);
+      box-shadow: var(--glow);
+      transform: translateY(-3px);
+    }
+
+    .card-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      background: rgba(125, 249, 255, 0.08);
+      border: 1px solid rgba(125, 249, 255, 0.2);
+      color: var(--signal);
+    }
+
+    .card[data-accent="admin"] .card-icon { background: rgba(167,139,250,.1); border-color: rgba(167,139,250,.3); color: var(--signal-2); }
+    .card[data-accent="exhibitor"] .card-icon { background: rgba(52,211,153,.1); border-color: rgba(52,211,153,.3); color: var(--signal-3); }
+    .card[data-accent="staff"] .card-icon { background: rgba(244,114,182,.1); border-color: rgba(244,114,182,.3); color: var(--signal-4); }
+    .card[data-accent="lottery"] .card-icon { background: rgba(251,191,36,.1); border-color: rgba(251,191,36,.3); color: var(--signal-5); }
+
+    .card-title { font-size: 1.05rem; font-weight: 700; }
+    .card-desc { font-size: 0.82rem; color: var(--muted); }
+
+    .card-cta {
+      margin-top: 0.4rem;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--signal);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    footer {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      padding: 1.5rem;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.7rem;
+      color: var(--muted);
+    }
+
+    footer .heart { color: var(--signal-4); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="eyebrow">Community Day · Signal Hunt</div>
+      <h1>入口汇总</h1>
+      <p class="subtitle">选择你要进入的页面</p>
+    </header>
+
+    <div class="section-label">管理 · Management</div>
+    <div class="grid">
+      <a class="card" data-accent="admin" href="admin.html">
+        <div class="card-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6l8-4z"/><path d="M9 12l2 2 4-4"/></svg>
+        </div>
+        <div class="card-title">管理后台</div>
+        <div class="card-desc">任务、组合、抽奖、排行榜、流量、统计与重置</div>
+        <span class="card-cta">进入 admin →</span>
+      </a>
+
+      <a class="card" data-accent="exhibitor" href="exhibitor.html">
+        <div class="card-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l1-5h16l1 5"/><path d="M5 9v11h14V9"/><path d="M9 20v-6h6v6"/></svg>
+        </div>
+        <div class="card-title">展商登录</div>
+        <div class="card-desc">查看本站点数据，扫码 / 手动为参与者打卡（Plan B）</div>
+        <span class="card-cta">进入展商控制台 →</span>
+      </a>
+
+      <a class="card" data-accent="staff" href="staff.html">
+        <div class="card-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/></svg>
+        </div>
+        <div class="card-title">志愿者登录</div>
+        <div class="card-desc">扫码核验午餐 / 派对权益，并核销奖励（含集齐全部 stamp 的礼品兑奖）</div>
+        <span class="card-cta">进入志愿者控制台 →</span>
+      </a>
+    </div>
+
+    <div class="section-label">参与者 · Participant</div>
+    <div class="grid">
+      <a class="card" href="signal_hunt.html">
+        <div class="card-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        </div>
+        <div class="card-title">Signal Hunt 进度页</div>
+        <div class="card-desc">参与者打卡进度、站点地图与展商介绍</div>
+        <span class="card-cta">打开进度页 →</span>
+      </a>
+
+      <a class="card" data-accent="staff" href="redeem.html">
+        <div class="card-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 12v8H4v-8"/><path d="M2 7h20v5H2z"/><path d="M12 22V7"/><path d="M12 7a3 3 0 1 0-3-3c0 1.5 1.5 3 3 3z"/></svg>
+        </div>
+        <div class="card-title">奖励核销</div>
+        <div class="card-desc">志愿者扫码核销参与者获得的奖励</div>
+        <span class="card-cta">打开核销页 →</span>
+      </a>
+
+      <a class="card" data-accent="lottery" href="lottery.html">
+        <div class="card-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        </div>
+        <div class="card-title">抽奖大屏</div>
+        <div class="card-desc">After Party 3D 抽奖动画（投影展示用）</div>
+        <span class="card-cta">打开抽奖页 →</span>
+      </a>
+    </div>
+  </div>
+
+  <footer>
+    Made with <span class="heart">❤</span> by Kiro · Powered by Amazon Web Services
+  </footer>
+</body>
+</html>

@@ -250,7 +250,7 @@ async function queryRegisteredParticipants(client, tableName) {
  *   400 no_participants when the participant pool is empty,
  *   500 internal_error on any DynamoDB failure.
  */
-export async function handleDraw(claims) {
+export async function handleDraw(claims, body) {
   // 1. Authorization — admin group membership required. (API Gateway already
   //    enforces 401 for a missing/invalid token.)
   if (!isAdmin(claims)) {
@@ -274,41 +274,71 @@ export async function handleDraw(claims) {
     return error(400, 'no_participants', 'There are no eligible participants for the draw');
   }
 
+  // How many winners to draw in this batch (default 1). Clamp to [1, pool size].
+  let count = 1;
+  if (body && body.count != null) {
+    const n = Number(body.count);
+    if (!Number.isInteger(n) || n < 1) {
+      return error(400, 'invalid_field', 'count must be a positive integer', 'count');
+    }
+    count = n;
+  }
+  count = Math.min(count, participants.length);
+
   try {
-    // 4. Atomic draw-sequence allocation — guarantees a unique, monotonic
-    //    sequence number even under concurrent draw requests.
+    // 4. Atomic draw-sequence allocation — reserve `count` consecutive sequence
+    //    numbers in one atomic increment (guarantees uniqueness under concurrency).
     const counterResult = await client.send(new UpdateCommand({
       TableName: tableName,
       Key: buildKey('LOTTERY', 'DRAW_COUNTER'),
-      UpdateExpression: 'ADD seq :one',
-      ExpressionAttributeValues: { ':one': 1 },
+      UpdateExpression: 'ADD seq :n',
+      ExpressionAttributeValues: { ':n': count },
       ReturnValues: 'UPDATED_NEW',
     }));
-    const drawSeq = counterResult.Attributes.seq;
+    const endSeq = counterResult.Attributes.seq;
+    const startSeq = endSeq - count + 1;
 
-    // 5. Cryptographically secure winner selection.
-    const idx = randomInt(0, participants.length);
-    const winner = participants[idx];
-    const nickname = winner.nickname;
-    const tagId = winner.tagId;
+    // 5. Cryptographically secure selection of `count` DISTINCT winners
+    //    (partial Fisher-Yates shuffle, no winner repeats within a batch).
+    const pool = participants.slice();
+    const chosen = [];
+    for (let i = 0; i < count; i++) {
+      const j = i + randomInt(0, pool.length - i);
+      const tmp = pool[i]; pool[i] = pool[j]; pool[j] = tmp;
+      chosen.push(pool[i]);
+    }
+
+    // 6. Persist each winner with its own sequential drawSeq.
     const drawnAt = isoNow();
+    const winners = [];
+    for (let i = 0; i < chosen.length; i++) {
+      const drawSeq = startSeq + i;
+      const nickname = chosen[i].nickname;
+      const tagId = chosen[i].tagId;
+      const paddedSeq = String(drawSeq).padStart(6, '0');
+      await client.send(new PutCommand({
+        TableName: tableName,
+        Item: {
+          ...buildKey('LOTTERY', `WINNER#${paddedSeq}`),
+          drawSeq,
+          nickname,
+          tagId,
+          drawnAt,
+        },
+      }));
+      winners.push({ drawSeq, nickname, tagId, drawnAt });
+    }
 
-    // 6. Persist the winner. The zero-padded sequence in the SK keeps winners
-    //    sorting chronologically as strings (e.g. "WINNER#000003").
-    const paddedSeq = String(drawSeq).padStart(6, '0');
-    await client.send(new PutCommand({
-      TableName: tableName,
-      Item: {
-        ...buildKey('LOTTERY', `WINNER#${paddedSeq}`),
-        drawSeq,
-        nickname,
-        tagId,
-        drawnAt,
-      },
-    }));
-
-    // 7. Success.
-    return ok({ drawSeq, nickname, tagId, drawnAt });
+    // 7. Success. Return the full batch; keep single-winner fields for
+    //    backward compatibility with any caller expecting one winner.
+    return ok({
+      count: winners.length,
+      winners,
+      drawSeq: winners[0].drawSeq,
+      nickname: winners[0].nickname,
+      tagId: winners[0].tagId,
+      drawnAt,
+    });
   } catch (err) {
     console.error('DynamoDB error executing lottery draw:', err);
     return internalError('Failed to execute lottery draw');
@@ -579,6 +609,45 @@ export async function handleAddWinner(body, claims) {
   } catch (err) {
     console.error('DynamoDB error adding manual winner:', err);
     return internalError('Failed to add winner');
+  }
+}
+
+/**
+ * POST /lottery/winner/delete — delete winner records by nickname (admin only).
+ * Body: { nicknames: string[] }  (or { nickname: string })
+ * Used by the "reset easter egg" action to clear specific winners so they can
+ * be drawn (and revealed) again.
+ */
+export async function handleDeleteWinners(body, claims) {
+  if (!isAdmin(claims)) return error(403, 'forbidden', 'Admin group membership required');
+
+  let names = [];
+  if (body && Array.isArray(body.nicknames)) names = body.nicknames;
+  else if (body && typeof body.nickname === 'string') names = [body.nickname];
+  names = names.filter((n) => typeof n === 'string' && n.trim()).map((n) => n.trim());
+  if (names.length === 0) return missingField('nicknames');
+
+  const client = getDocClient();
+  const tableName = getTableName();
+  const target = new Set(names);
+
+  try {
+    const { DeleteCommand } = await import('@aws-sdk/lib-dynamodb');
+    const winCondition = buildKeyCondition('LOTTERY', { beginsWith: 'WINNER#' });
+    const res = await client.send(new QueryCommand({ TableName: tableName, ...winCondition }));
+    let deleted = 0;
+    for (const item of (res.Items || [])) {
+      if (target.has(item.nickname)) {
+        await client.send(new DeleteCommand({
+          TableName: tableName, Key: { PK: item.PK, SK: item.SK },
+        }));
+        deleted++;
+      }
+    }
+    return ok({ deleted, nicknames: names });
+  } catch (err) {
+    console.error('DynamoDB error deleting winners:', err);
+    return internalError('Failed to delete winners');
   }
 }
 

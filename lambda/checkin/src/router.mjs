@@ -10,6 +10,13 @@ import { handleStationTraffic, handleStationSummary } from './station-handler.mj
 import { handleLeaderboard } from './leaderboard-handler.mjs';
 import { handleMissionAdmin } from './admin-handler.mjs';
 import { handleComboAdmin } from './combo-handler.mjs';
+import { handleResetStats } from './reset-handler.mjs';
+import {
+  handleListUsers,
+  handleCreateUser,
+  handleResetUserPassword,
+  handleDeleteUser,
+} from './admin-users-handler.mjs';
 import { handleVerify, handleSetEntitlement, handleRemoveEntitlement, handleGetEntitlement } from './verify-handler.mjs';
 import {
   handleNicknameRegister,
@@ -21,6 +28,7 @@ import {
   handleResetLottery,
   handleAddWinner,
   handleAddParticipant,
+  handleDeleteWinners,
   loadLotteryConfig,
 } from './lottery-handler.mjs';
 
@@ -298,7 +306,7 @@ export async function route(event) {
 
     // POST /lottery/draw (admin auth required - JWT validated by API Gateway)
     if (method === 'POST' && path === '/lottery/draw') {
-      return await handleDraw(extractClaims(event));
+      return await handleDraw(extractClaims(event), parseBody(event));
     }
 
     // POST /lottery/winner (admin only — manually add a winner by nickname)
@@ -330,6 +338,36 @@ export async function route(event) {
     // POST /lottery/reset (admin only — clears all nicknames + winners)
     if (method === 'POST' && path === '/lottery/reset') {
       return await handleResetLottery(extractClaims(event));
+    }
+
+    // POST /lottery/winner/delete (admin only — delete winners by nickname)
+    if (method === 'POST' && path === '/lottery/winner/delete') {
+      return await handleDeleteWinners(parseBody(event), extractClaims(event));
+    }
+
+    // POST /admin/reset-stats (admin only — clears participant activity / statistics)
+    if (method === 'POST' && path === '/admin/reset-stats') {
+      return await handleResetStats(extractClaims(event));
+    }
+
+    // GET /admin/users (admin only — list staff/exhibitor accounts)
+    if (method === 'GET' && path === '/admin/users') {
+      return await handleListUsers(extractClaims(event));
+    }
+
+    // POST /admin/users (admin only — create staff/exhibitor account)
+    if (method === 'POST' && path === '/admin/users') {
+      return await handleCreateUser(parseBody(event), extractClaims(event));
+    }
+
+    // POST /admin/users/password (admin only — reset account password)
+    if (method === 'POST' && path === '/admin/users/password') {
+      return await handleResetUserPassword(parseBody(event), extractClaims(event));
+    }
+
+    // POST /admin/users/delete (admin only — delete account)
+    if (method === 'POST' && path === '/admin/users/delete') {
+      return await handleDeleteUser(parseBody(event), extractClaims(event));
     }
 
     // No route matched

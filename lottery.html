@@ -146,6 +146,41 @@
       50% { transform: scale(1.05); }
     }
 
+    /* Easter-egg intro announcement overlay */
+    #egg-announce {
+      display: none; position: fixed; inset: 0; z-index: 250;
+      align-items: center; justify-content: center;
+      background: radial-gradient(ellipse at center, rgba(124,58,237,.35) 0%, rgba(5,9,20,.92) 70%);
+      backdrop-filter: blur(4px);
+    }
+    #egg-announce.active { display: flex; animation: eggFadeIn .5s ease; }
+    .egg-announce-inner { text-align: center; padding: 0 24px; }
+    .egg-emoji {
+      font-size: clamp(48px, 9vw, 120px);
+      animation: eggBob 1.6s ease-in-out infinite;
+    }
+    .egg-line1 {
+      margin-top: 18px;
+      font-size: clamp(28px, 5vw, 64px); font-weight: 800;
+      color: #fbbf24; text-shadow: 0 0 24px rgba(251,191,36,.6);
+      animation: eggFloat 3s ease-in-out infinite;
+    }
+    .egg-line2 {
+      margin-top: 14px;
+      font-size: clamp(18px, 3vw, 38px); font-weight: 700;
+      color: #a78bfa; text-shadow: 0 0 18px rgba(167,139,250,.5);
+      animation: eggFloat 3s ease-in-out infinite .4s;
+    }
+    @keyframes eggFadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes eggBob {
+      0%,100% { transform: translateY(0) rotate(-4deg); }
+      50% { transform: translateY(-16px) rotate(4deg); }
+    }
+    @keyframes eggFloat {
+      0%,100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+
     /* Card styling (each participant) */
     .card {
       width: 120px; height: 150px;
@@ -215,6 +250,15 @@
     <div id="winner-name"></div>
   </div>
 
+  <!-- Easter-egg intro announcement (floats in before the first egg winner) -->
+  <div id="egg-announce">
+    <div class="egg-announce-inner">
+      <div class="egg-emoji">🥚✨</div>
+      <div class="egg-line1">请注意～接下来是彩蛋环节！</div>
+      <div class="egg-line2">神秘嘉宾即将登场，要开始了哦 🎉</div>
+    </div>
+  </div>
+
   <script type="importmap">
   {
     "imports": {
@@ -242,12 +286,33 @@
     const BASE_SPIN = 0.0022;   // idle spin
     const MAX_SPIN = 0.13;      // peak spin during pre-reveal build-up
 
-    // DiceBear cartoon (robot) avatar — deterministic by seed (nickname).
+    // Avatar palette + custom overrides for specific guests.
     const AVATAR_BG = ['2dd4bf','7c3aed','60a5fa','f472b6','fbbf24','f97316','a78bfa','34d399','3b82f6'];
+    const CUSTOM_AVATARS = {
+      '萍姐': 'ping.jpg',
+      'Liya': 'liya.png',
+      '琳小轩': 'linxiaoxuan.png',
+    };
+    // Locally-generated avatar (colored circle + first character of the nickname),
+    // returned as an inline SVG data URI. No external service — instant and
+    // reliable for hundreds of cards and on restricted networks.
+    function localAvatar(name) {
+      const bg = AVATAR_BG[Math.abs(hashStr(name)) % AVATAR_BG.length];
+      const ch = ([...String(name || '?')][0] || '?')
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const svg = "<svg xmlns='http://www.w3.org/2000/svg' width='128' height='128'>" +
+        "<rect width='128' height='128' rx='64' fill='#" + bg + "'/>" +
+        "<rect width='128' height='128' rx='64' fill='url(#s)'/>" +
+        "<defs><radialGradient id='s' cx='50%' cy='32%' r='75%'>" +
+        "<stop offset='0%' stop-color='#ffffff' stop-opacity='0.35'/>" +
+        "<stop offset='100%' stop-color='#ffffff' stop-opacity='0'/></radialGradient></defs>" +
+        "<text x='64' y='70' font-size='62' font-family='\"Segoe UI\",\"Microsoft YaHei\",sans-serif' " +
+        "font-weight='700' fill='#ffffff' text-anchor='middle' dominant-baseline='central'>" + ch + "</text></svg>";
+      return 'data:image/svg+xml,' + encodeURIComponent(svg);
+    }
     function avatarUrl(nickname, i) {
-      const seed = encodeURIComponent(nickname || ('guest' + i));
-      const bg = AVATAR_BG[Math.abs(hashStr(nickname || ('g' + i))) % AVATAR_BG.length];
-      return `https://api.dicebear.com/9.x/bottts/svg?seed=${seed}&backgroundColor=${bg}&radius=50`;
+      if (nickname && CUSTOM_AVATARS[nickname]) return CUSTOM_AVATARS[nickname];
+      return localAvatar(nickname || ('guest' + i));
     }
     function hashStr(s) {
       let h = 0;
@@ -617,8 +682,20 @@
 
       const overlay = document.getElementById('winner-overlay');
       document.getElementById('winner-name').textContent = nickname;
-      document.getElementById('winner-avatar-img').src = avatarUrl(nickname, 0);
+      const winnerImg = document.getElementById('winner-avatar-img');
+      // Fall back to the locally-generated avatar if a custom image fails to load.
+      winnerImg.onerror = function () {
+        winnerImg.onerror = null;
+        winnerImg.src = localAvatar(nickname || 'guest');
+      };
+      winnerImg.src = avatarUrl(nickname, 0);
       overlay.classList.add('active');
+
+      // The grand-finale winner (琳小轩) stays on screen permanently — do not
+      // hide the overlay or resume rotation/draining after the hold.
+      if (nickname === '琳小轩') {
+        return;
+      }
 
       setTimeout(function () {
         overlay.classList.remove('active');
@@ -635,6 +712,11 @@
     let pendingWinners = [];
     function startPolling() { pollWinners(); }
 
+    // On first successful poll we only establish the baseline (highest existing
+    // drawSeq) WITHOUT revealing past winners, so the screen never replays the
+    // historical winner list. Only winners drawn after the page loads play.
+    let baselineEstablished = false;
+
     async function pollWinners() {
       const statusEl = document.getElementById('status-indicator');
       try {
@@ -645,13 +727,21 @@
         statusEl.className = 'connected';
         statusEl.textContent = '已连接';
 
-        const fresh = (body.winners || []).filter(w => (w.drawSeq || 0) > knownDrawSeq);
-        fresh.sort((a, b) => (a.drawSeq || 0) - (b.drawSeq || 0));
-        for (const w of fresh) {
-          pendingWinners.push(w);
-          knownDrawSeq = w.drawSeq || knownDrawSeq;
+        const all = body.winners || [];
+
+        if (!baselineEstablished) {
+          // Skip everything that already existed when the page opened.
+          knownDrawSeq = all.reduce((m, w) => Math.max(m, w.drawSeq || 0), 0);
+          baselineEstablished = true;
+        } else {
+          const fresh = all.filter(w => (w.drawSeq || 0) > knownDrawSeq);
+          fresh.sort((a, b) => (a.drawSeq || 0) - (b.drawSeq || 0));
+          for (const w of fresh) {
+            pendingWinners.push(w);
+            knownDrawSeq = w.drawSeq || knownDrawSeq;
+          }
+          drainWinners();
         }
-        drainWinners();
       } catch (e) {
         failureStreak++;
         if (failureStreak >= 3) {
@@ -672,8 +762,24 @@
           if (!revealing) { clearInterval(timer); drainWinners(); }
         }, 300);
       };
-      revealWinner(w.nickname);
+      // The first easter-egg winner (萍姐) gets a fun intro banner first.
+      if (w.nickname === '萍姐') {
+        revealing = true; // block re-entry during the announcement
+        showEggAnnounce(function () { revealWinner(w.nickname); });
+      } else {
+        revealWinner(w.nickname);
+      }
       onDone();
+    }
+
+    // Float the easter-egg intro text, then run the callback (the reveal).
+    function showEggAnnounce(cb) {
+      const el = document.getElementById('egg-announce');
+      el.classList.add('active');
+      setTimeout(function () {
+        el.classList.remove('active');
+        cb();
+      }, 5000);
     }
 
     boot();

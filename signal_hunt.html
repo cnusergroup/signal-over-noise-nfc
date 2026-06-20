@@ -1137,6 +1137,92 @@
       font-size: 11px;
     }
 
+    /* ===== KIRO MASCOT (PC only) ===== */
+    .kiro-credit {
+      margin-top: auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      padding: 12px 0 4px;
+    }
+
+    .ghost-container {
+      position: relative;
+      width: 120px;
+      height: 120px;
+      display: grid;
+      place-items: center;
+    }
+
+    .ghost-glow {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(125,249,255,.35) 0%, rgba(167,139,250,.18) 45%, transparent 70%);
+      filter: blur(8px);
+      animation: ghostGlowPulse 3.6s ease-in-out infinite;
+    }
+
+    .ghost-mascot {
+      position: relative;
+      width: 96px;
+      height: auto;
+      z-index: 2;
+      filter: drop-shadow(0 6px 18px rgba(125,249,255,.35));
+      animation: ghostFloat 4.2s ease-in-out infinite;
+    }
+
+    .ghost-particles { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+
+    .ghost-particles .particle {
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: var(--signal);
+      box-shadow: 0 0 6px rgba(125,249,255,.8);
+      opacity: 0;
+      animation: ghostParticle 3.8s ease-in-out infinite;
+    }
+
+    .ghost-particles .particle:nth-child(1) { left: 88%; top: 60%; animation-delay: 0s; }
+    .ghost-particles .particle:nth-child(2) { left: 50%; top: 72%; animation-delay: .7s; }
+    .ghost-particles .particle:nth-child(3) { left: 6%;  top: 86%; animation-delay: 1.4s; }
+    .ghost-particles .particle:nth-child(4) { left: 42%; top: 70%; animation-delay: 2.1s; }
+    .ghost-particles .particle:nth-child(5) { left: 30%; top: 34%; animation-delay: 2.8s; }
+
+    .kiro-credit-text {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px;
+      letter-spacing: .02em;
+      color: rgba(234,246,255,.65);
+      text-align: center;
+      line-height: 1.5;
+    }
+
+    .kiro-credit-text .heart { color: var(--signal-4, #f472b6); }
+
+    @keyframes ghostFloat {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-12px); }
+    }
+
+    @keyframes ghostGlowPulse {
+      0%, 100% { transform: scale(.92); opacity: .65; }
+      50% { transform: scale(1.08); opacity: 1; }
+    }
+
+    @keyframes ghostParticle {
+      0% { transform: translateY(0) scale(.6); opacity: 0; }
+      30% { opacity: 1; }
+      100% { transform: translateY(-26px) scale(1); opacity: 0; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .ghost-mascot, .ghost-glow, .ghost-particles .particle { animation: none; }
+    }
+
     /* ===== RESPONSIVE ===== */
     @media (max-width: 1024px) {
       .page {
@@ -1158,6 +1244,7 @@
       .label h3 { font-size: 12px; }
       .label p { font-size: 10px; }
       .complete-banner { width: calc(100% - 32px); right: 16px; }
+      .kiro-credit { display: none; }
     }
 
     /* ===== MOBILE: Vertical Timeline Layout ===== */
@@ -1469,7 +1556,7 @@
       <!-- After Party Lottery panel (hidden, no longer standalone) -->
       <section class="panel lottery-panel" id="lottery-panel" hidden></section>
 
-      <section class="panel cards" id="cards">
+      <section class="panel cards" id="cards" style="display:none">
         <div class="card"><span class="num">01</span><h4>Noise Detector</h4><p>噪声探测者</p></div>
         <div class="card"><span class="num">02</span><h4>Pattern Finder</h4><p>模式发现者</p></div>
         <div class="card"><span class="num">03</span><h4>Insight Engine</h4><p>洞察引擎</p></div>
@@ -1481,6 +1568,21 @@
         <div class="card"><span class="num">09</span><h4>Clarity Forge</h4><p>清晰锻造者</p></div>
         <div class="card"><span class="num">10</span><h4>Signal Master</h4><p>信号大师</p></div>
       </section>
+
+      <div class="kiro-credit">
+        <div class="ghost-container">
+          <div class="ghost-glow"></div>
+          <img class="ghost-mascot" src="kiro.png" alt="Kiro" />
+          <div class="ghost-particles">
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+          </div>
+        </div>
+        <div class="kiro-credit-text">Made with <span class="heart">❤</span> by Kiro<br />Powered by Amazon Web Services</div>
+      </div>
     </aside>
 
     <section class="map" id="mapArea">
@@ -1501,61 +1603,61 @@
       <article class="station" data-id="1">
         <div class="fog"></div>
         <div class="orb"><span class="icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span></div>
-        <div class="label"><span class="badge">1</span><div><h3>First Signal</h3><p>In the noise, something begins...</p></div></div>
+        <div class="label"><span class="badge">1</span><div><h3>启动寻找信号之旅</h3></div></div>
       </article>
 
       <article class="station" data-id="2">
         <div class="fog"></div>
         <div class="orb"><span class="icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12l5-5 5 5 5-5 5 5"/></svg></span></div>
-        <div class="label"><span class="badge">2</span><div><h3>Pattern</h3><p>Patterns emerge from chaos.</p></div></div>
+        <div class="label"><span class="badge">2</span><div><h3>智元机器人</h3></div></div>
       </article>
 
       <article class="station" data-id="3">
         <div class="fog"></div>
         <div class="orb"><span class="icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg></span></div>
-        <div class="label"><span class="badge">3</span><div><h3>Insight</h3><p>Meaning is discovered.</p></div></div>
+        <div class="label"><span class="badge">3</span><div><h3>云器科技</h3></div></div>
       </article>
 
       <article class="station" data-id="4">
         <div class="fog"></div>
         <div class="orb"><span class="icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/></svg></span></div>
-        <div class="label"><span class="badge">4</span><div><h3>Decision</h3><p>Choose signal. Ignore noise.</p></div></div>
+        <div class="label"><span class="badge">4</span><div><h3>观测云</h3></div></div>
       </article>
 
       <article class="station" data-id="5">
         <div class="fog"></div>
         <div class="orb"><span class="icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></span></div>
-        <div class="label"><span class="badge">5</span><div><h3>Amplify</h3><p>Boost the signal strength.</p></div></div>
+        <div class="label"><span class="badge">5</span><div><h3>函子科技</h3></div></div>
       </article>
 
       <article class="station" data-id="6">
         <div class="fog"></div>
         <div class="orb"><span class="icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4m0 12v4m-7-7H2m20 0h-3M6.34 6.34l-2.12-2.12m15.56 15.56l-2.12-2.12M6.34 17.66l-2.12 2.12m15.56-15.56l-2.12 2.12"/><circle cx="12" cy="12" r="4"/></svg></span></div>
-        <div class="label"><span class="badge">6</span><div><h3>Weave</h3><p>Connect the data threads.</p></div></div>
+        <div class="label"><span class="badge">6</span><div><h3>SelectDB / Apache Doris</h3></div></div>
       </article>
 
       <article class="station" data-id="7">
         <div class="fog"></div>
         <div class="orb"><span class="icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span></div>
-        <div class="label"><span class="badge">7</span><div><h3>Navigate</h3><p>Chart through the chaos.</p></div></div>
+        <div class="label"><span class="badge">7</span><div><h3>Rokid</h3></div></div>
       </article>
 
       <article class="station" data-id="8">
         <div class="fog"></div>
         <div class="orb"><span class="icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg></span></div>
-        <div class="label"><span class="badge">8</span><div><h3>Seek</h3><p>Uncover hidden truths.</p></div></div>
+        <div class="label"><span class="badge">8</span><div><h3>社区伙伴</h3><p>Data for AI / AtomGit / DataFun</p></div></div>
       </article>
 
       <article class="station" data-id="9">
         <div class="fog"></div>
         <div class="orb"><span class="icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18m-6-6l6 6 6-6"/></svg></span></div>
-        <div class="label"><span class="badge">9</span><div><h3>Forge</h3><p>Shape clarity from noise.</p></div></div>
+        <div class="label"><span class="badge">9</span><div><h3>动手专区</h3><p>TUYA 智能 / NVIDIA实验 / AIMA实验 / UG实验</p></div></div>
       </article>
 
       <article class="station" data-id="10">
         <div class="fog"></div>
         <div class="orb"><span class="icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg></span></div>
-        <div class="label"><span class="badge">10</span><div><h3>Clarity</h3><p>Signal over Noise. Mastered.</p></div></div>
+        <div class="label"><span class="badge">10</span><div><h3>UG 社区</h3></div></div>
       </article>
 
       <div class="panel complete-banner" id="completeBanner">
@@ -1642,84 +1744,79 @@
       // ===== SPONSOR DATA (展示用) =====
       const stationData = {
         1: {
-          title: 'First Signal',
-          subtitle: '噪声探测者 · Noise Detector',
-          sponsor: { name: 'CloudNova AI', tagline: '下一代智能云计算平台，让 AI 触手可及' },
-          description: '欢迎来到 Signal Hunt 的第一站！在这里，你将学会如何从海量信息中识别出第一缕有价值的信号。CloudNova AI 为你提供强大的数据处理能力，帮助你在噪声中找到方向。',
-          offer: '扫码关注 CloudNova AI 公众号，领取 ¥200 云计算体验券 + 免费 AI API 调用额度 1000 次',
-          qr: 'CloudNova AI'
+          title: '启动寻找信号之旅',
+          subtitle: '',
+          companies: [
+            { name: 'UG', intro: '穿透噪音，搜集 10 大核心信号。带上激活的手环，即刻出发！在展区中穿梭，寻找 10 个展商展位。' }
+          ]
         },
         2: {
-          title: 'Pattern',
-          subtitle: '模式发现者 · Pattern Finder',
-          sponsor: { name: 'DataForge Analytics', tagline: '实时数据分析引擎，洞察商业模式' },
-          description: '混沌中隐藏着规律。DataForge Analytics 帮助企业从复杂数据中发现隐藏的模式和趋势，将看似无序的信息转化为可执行的商业洞察。',
-          offer: '现场注册即享 DataForge 专业版 30 天免费试用，附赠《数据驱动决策》电子书',
-          qr: 'DataForge Analytics'
+          title: '智元机器人',
+          subtitle: '',
+          companies: [
+            { name: '智元机器人', intro: '智元 AIMA 开发者社区是由智元机器人发起，与全体开发者共创共建。我们致力于汇聚代码、数据和人才；打造平等开放、和谐共享、积极活跃的技术生态社区。' }
+          ]
         },
         3: {
-          title: 'Insight',
-          subtitle: '洞察引擎 · Insight Engine',
-          sponsor: { name: 'MindBridge Labs', tagline: '认知科学 × 人工智能，重新定义洞察力' },
-          description: '真正的洞察来自于深度理解。MindBridge Labs 结合认知科学与 AI 技术，打造新一代知识管理和洞察发现平台，让每一个想法都能被捕捉和放大。',
-          offer: '参与现场 Demo 体验，赢取 MindBridge Pro 年度会员（价值 ¥1,999）抽奖资格',
-          qr: 'MindBridge Labs'
+          title: '云器科技',
+          subtitle: '',
+          companies: [
+            { name: '云器科技', intro: 'SingClaw 是 AI 数据桌面助手，是会记忆、会分析、会行动的新一代桌面智能体。真正能根据背景记忆替你管理文件，整合多渠道数据、精准分析数据、自动化/更快速地构建数据 pipeline、建立数据洞察"AI 伙伴"。' }
+          ]
         },
         4: {
-          title: 'Decision',
-          subtitle: '决策者 · Decision Maker',
-          sponsor: { name: 'QuantumLeap Capital', tagline: '量化决策，智慧投资' },
-          description: '在信号与噪声之间做出正确的选择，是每一个决策者的核心能力。QuantumLeap Capital 用量化模型和 AI 辅助决策系统，帮助投资者在不确定性中找到确定性。',
-          offer: '扫码获取《2025 科技投资趋势报告》完整版 PDF + 一对一投资顾问咨询名额',
-          qr: 'QuantumLeap Capital'
+          title: '观测云',
+          subtitle: '',
+          companies: [
+            { name: '观测云', intro: '观测云是 AI 时代端到端可观测性基础设施，采用按量付费、按需购买、开箱即用模式，全面覆盖 App、Web、后端、中间件、基础设施、云平台，同时支持监控企业级智能体的行为状态。集成 650+ 主流技术栈与云服务，内置 AI Agent 能力，支持自定义创建具备专业技能的不同企业级智能体，为用户提供统一、智能、安全的监控体验。目前已服务 1000+ 企业，覆盖 AI、金融、零售、制造等行业。' }
+          ]
         },
         5: {
-          title: 'Amplify',
-          subtitle: '信号放大器 · Signal Amplifier',
-          sponsor: { name: 'EchoWave Communications', tagline: '让每一个声音都被听见' },
-          description: '好的信号需要被放大。EchoWave Communications 专注于品牌传播和内容营销，帮助创业者和企业将核心价值传递给目标受众，实现指数级增长。',
-          offer: '现场扫码预约品牌诊断服务（原价 ¥5,000），前 50 名免费',
-          qr: 'EchoWave Communications'
+          title: '函子科技',
+          subtitle: '',
+          companies: [
+            { name: '函子科技', intro: 'Zion 是 OPC 一人公司的无代码开发底座，没有代码经验的创业者也能从 UI 设计、数据库、业务逻辑到 AI Agent 和支付功能，一站式搞定产品全流程，上线可变现的 MVP。目前平台拥有 30 万+ 开发者，上线 8000+ 项目，触达千万用户，并已获红杉、线性资本及奇绩创坛投资。' }
+          ]
         },
         6: {
-          title: 'Weave',
-          subtitle: '数据编织者 · Data Weaver',
-          sponsor: { name: 'NexusGraph', tagline: '知识图谱驱动的企业智能连接平台' },
-          description: '数据的价值在于连接。NexusGraph 通过知识图谱技术，将分散的数据节点编织成有意义的网络，揭示隐藏的关联和机会。',
-          offer: '体验 NexusGraph 知识图谱 Demo，完成互动任务即可获得限量版技术 T 恤',
-          qr: 'NexusGraph'
+          title: 'SelectDB / Apache Doris',
+          subtitle: '',
+          companies: [
+            { name: 'SelectDB / Apache Doris', intro: '北京飞轮数据科技有限公司是一家基于开源分析型数据库 Apache Doris 的商业化公司，由 Apache Doris 原创团队于 2022 年 1 月创建，公司总部位于北京，面向全球提供实时数据仓库的产品与解决方案，满足各类场景的实时数据分析需求。' }
+          ]
         },
         7: {
-          title: 'Navigate',
-          subtitle: '混沌领航员 · Chaos Navigator',
-          sponsor: { name: 'Pathfinder Robotics', tagline: '自主导航技术，探索未知边界' },
-          description: '在混沌中找到方向需要智慧和勇气。Pathfinder Robotics 研发的自主导航系统，不仅能在物理世界中寻路，更能帮助企业在复杂市场环境中找到最优路径。',
-          offer: '现场观看机器人导航 Demo，参与互动挑战赢取 Pathfinder 迷你机器人套件',
-          qr: 'Pathfinder Robotics'
+          title: 'Rokid',
+          subtitle: '',
+          companies: [
+            { name: 'Rokid', intro: 'Rokid 乐奇创立于 2014 年，是一家专注于新一代人机交互技术的产品平台公司。目前致力于 AR 眼镜等软硬件产品的研发及以 YodaOS 操作系统为载体的生态构建，其 AI、AR 产品已在全球 100 余个国家和地区投入使用。' }
+          ]
         },
         8: {
-          title: 'Seek',
-          subtitle: '真相探索者 · Truth Seeker',
-          sponsor: { name: 'VeritasChain', tagline: '区块链驱动的可信数据验证网络' },
-          description: '在信息过载的时代，辨别真伪至关重要。VeritasChain 利用区块链技术构建去中心化的数据验证网络，确保每一条信息都可追溯、可验证。',
-          offer: '注册 VeritasChain 测试网账户，获得 500 VRT 测试代币 + 限量 NFT 徽章',
-          qr: 'VeritasChain'
+          title: '社区伙伴',
+          subtitle: 'Data for AI / AtomGit / DataFun',
+          companies: [
+            { name: 'Data for AI', intro: '北京平流智能数据科技有限公司创立于 2023 年，是一家全球领先的专注于下一代大数据和 AI 技术的数据智能公司。公司的创始人兼具美国硅谷著名开源软件公司和中国顶级互联网公司大数据和 AI 相关十年以上的研发与高层管理经验，同时也是全球顶级开源组织 Apache 软件基金会和 Linux Foundation 的重要成员，在 Apache 开源项目 Hadoop 和 Spark 等多个顶级开源项目中担任 PMC 成员，具备非常丰富的大数据和 AI 的行业经验。公司为企业实现多云环境中的智能数据服务和管理，基于机器学习和 AI 技术，针对最广泛的企业、云、大数据和各种数据来源，提供统一的数据访问、数据治理、数据分析以及智能计算等能力，助力企业数据与 AI 驱动型业务，提升组织创新和业务效能。公司在云、数据湖和大数据分析引擎、AI 大模型数据处理等技术领域具有前瞻性的发展理念和多项重要技术创新，在创立之初即获得了多家投资公司的广泛关注和投资。在多云时代，数据和 AI 领域必将发生沧海桑田般的变化，北京平流智能数据在多云之上所构建的数据平流层生态，将帮助用户以不变应万变，弄潮于数智之颠。' },
+            { name: 'AtomGit', intro: 'AtomGit 是由开放原子开源基金会携手 CSDN 等生态伙伴共同推出的新一代开源与人工智能协作平台。平台坚持"开放、中立、公益"的核心理念，打破传统代码托管边界，将代码托管、模型共享、数据集托管、智能体开发与算力服务深度整合，为全球开发者提供从开发、训练到部署的全链路一站式体验。' },
+            { name: 'DataFun', intro: 'DataFun 社区是国内领先的 Data+AI 领域的垂直社区，自 2017 年成立以来，DataFun 以"成就百万数据智能开发者，助力万家企业数智化"为使命，围绕 Data+AI 技术核心，打造了自媒体矩阵、微信私域、技术社区等多个用户活跃的平台，汇集近 5000 位行业专家和近百万私域用户。' }
+          ]
         },
         9: {
-          title: 'Forge',
-          subtitle: '清晰锻造者 · Clarity Forge',
-          sponsor: { name: 'CrystalMind Studio', tagline: '设计思维工作坊，锻造清晰思路' },
-          description: '清晰不是天生的，而是锻造出来的。CrystalMind Studio 通过设计思维方法论和创意工作坊，帮助团队将模糊的想法锻造成清晰的产品愿景和执行路线图。',
-          offer: '现场参与 15 分钟迷你工作坊，完成者获赠《设计思维实战手册》+ 工作坊 8 折优惠券',
-          qr: 'CrystalMind Studio'
+          title: '动手专区',
+          subtitle: 'TUYA 智能 / NVIDIA实验 / AIMA实验 / UG实验',
+          companies: [
+            { name: 'TUYA 智能', intro: '涂鸦智能（纽交所代码：TUYA；港交所代码：2391）是全球领先的 AI 云平台服务提供商，致力于将 AI 应用于生活，通过 AI Agent 开发平台、TuyaOpen 开源开发框架等通用 AI Agent 引擎，集成多模态 AI 能力，降低 AI 开发门槛，高效推进 AI 生活实现，加速 AI 与物理世界的深度融合。涂鸦智能具备云计算及空间智能等能力，为智能设备、商业应用和行业开发者提供了全新物理 AI 技术解决方案，以及开放中立的全球化生态，激发了一个由品牌、原始设备制造商、AI Agents、系统集成商和独立软件供应商组成的充满活力的全球开发者社区，共同打造绿色低碳、安全、高效、敏捷和开放的智慧解决方案生态。截至 2026 年 3 月 31 日，涂鸦 AI 开发者平台注册开发者数量超 197.0 万，分布于全球超 200 个国家和地区。' },
+            { name: 'NVIDIA 实验', intro: 'NVIDIA（英伟达）是全球领先的人工智能计算平台与加速计算技术公司，致力于推动 AI、大模型、机器人、自动驾驶和数字孪生等领域创新发展。凭借先进的 GPU、AI 基础设施及软件生态，NVIDIA 为企业、开发者和科研机构提供强大的算力支持，助力加速人工智能应用落地与产业数字化转型。' },
+            { name: 'AIMA 实验', intro: '智元 AIMA 开发者社区是由智元机器人发起，与全体开发者共创共建。我们致力于汇聚代码、数据和人才；打造平等开放、和谐共享、积极活跃的技术生态社区。' },
+            { name: 'UG 实验', intro: '亚马逊云科技云上探索实验室——构建无限，探索启程！亚马逊云科技携最新生成式 AI 服务与开发者工具，邀您亲身实践。无需成本计算、无需购置资源，扫码即可进入实验室，跟着指南亲手构建您的作品。无论新手还是专家，都欢迎您的加入！' }
+          ]
         },
         10: {
-          title: 'Clarity',
-          subtitle: '信号大师 · Signal Master',
-          sponsor: { name: 'Signal Over Noise Foundation', tagline: '致力于提升全球信息素养的非营利组织' },
-          description: '恭喜你完成了所有站点的探索！Signal Over Noise Foundation 致力于帮助人们在信息洪流中保持清醒，做出明智的决策。你已经证明了自己是真正的 Signal Master。',
-          offer: '集齐 10 枚信号，兑换 Signal Master 限量实体徽章 + 活动纪念品大礼包',
-          qr: 'Signal Over Noise'
+          title: 'UG 社区',
+          subtitle: '',
+          companies: [
+            { name: 'UG 社区', intro: '亚马逊云科技 User Group，是全世界最大的技术用户社区之一。在这里，我们彼此学习、分享技术、交流实践，覆盖全球 121 个国家，100 万+ 技术人。在大中华区，User Group 活跃在 19 座城市，拥有 7 个技术专项小组，全网 10 万+ 开发者社区成员，这里有最纯粹的技术交流，最真诚的同行互助，加入社区，一起成长！' }
+          ]
         }
       };
 
@@ -1872,9 +1969,33 @@
 
         elements.modalBadge.textContent = id;
         elements.modalTitle.textContent = data.title;
-        elements.modalSubtitle.textContent = data.subtitle;
 
-        elements.modalDescription.innerHTML = '<p>' + data.description + '</p>';
+        // Subtitle: hide the element entirely when there is no subtitle
+        if (data.subtitle) {
+          elements.modalSubtitle.textContent = data.subtitle;
+          elements.modalSubtitle.style.display = '';
+        } else {
+          elements.modalSubtitle.textContent = '';
+          elements.modalSubtitle.style.display = 'none';
+        }
+
+        // Company intros: single company shows just the intro;
+        // multiple companies each show name + intro, separated visually.
+        var companies = data.companies || [];
+        var html = '';
+        if (companies.length === 1) {
+          html = '<p>' + escapeHtml(companies[0].intro) + '</p>';
+        } else {
+          for (var i = 0; i < companies.length; i++) {
+            var c = companies[i];
+            if (i > 0) {
+              html += '<hr style="border:none;border-top:1px solid rgba(125,249,255,.15);margin:14px 0">';
+            }
+            html += '<h4 style="margin:0 0 6px;font-size:14px;color:var(--signal)">' + escapeHtml(c.name) + '</h4>';
+            html += '<p style="margin:0">' + escapeHtml(c.intro) + '</p>';
+          }
+        }
+        elements.modalDescription.innerHTML = html;
 
         elements.modalOverlay.classList.add('show');
         elements.modalOverlay.setAttribute('aria-hidden', 'false');
@@ -2196,11 +2317,13 @@
         // Already registered
         if (progress.nickname) {
           content.innerHTML =
-            '<div style="padding:10px 14px;border:1px solid rgba(52,211,153,.3);border-radius:10px;background:rgba(52,211,153,.06)">' +
+            '<div id="lottery-registered-box" style="padding:10px 14px;border:1px solid rgba(52,211,153,.3);border-radius:10px;background:rgba(52,211,153,.06)">' +
               '<span style="color:var(--signal-3);font-weight:600">✓ 已成功登记参与抽奖</span><br>' +
               '<span style="color:var(--signal);font-family:\'Share Tech Mono\',monospace">' + escapeHtml(progress.nickname) + '</span>' +
               '<div style="margin-top:6px;font-size:11px;color:var(--muted)">请等待主持人进行抽奖，祝您好运！</div>' +
             '</div>';
+          // Asynchronously check whether this participant has already won.
+          checkLotteryWin(progress.nickname);
           return;
         }
 
@@ -2226,6 +2349,33 @@
           '<div style="padding:10px 14px;border:1px solid rgba(248,113,113,.2);border-radius:10px;background:rgba(248,113,113,.04)">' +
             '<span style="color:var(--signal-4)">' + escapeHtml(reasonToZh(progress.lotteryReason, progress.stationsRemaining)) + '</span>' +
           '</div>';
+      }
+
+      // Check whether this participant has won the lottery, and if so replace the
+      // registered-state box with a celebratory win banner. Matches by tagId
+      // (preferred) or nickname against the public winners list.
+      async function checkLotteryWin(nickname) {
+        try {
+          var resp = await fetch(API_BASE + '/lottery/winners');
+          if (!resp.ok) return;
+          var data = await resp.json();
+          var winners = (data && data.winners) || [];
+          var won = winners.some(function (w) {
+            return (currentTagId && w.tagId === currentTagId) ||
+                   (nickname && w.nickname === nickname);
+          });
+          if (!won) return;
+          var box = document.getElementById('lottery-registered-box');
+          if (!box) return;
+          box.style.border = '1px solid rgba(251,191,36,.5)';
+          box.style.background = 'rgba(251,191,36,.08)';
+          box.innerHTML =
+            '<div style="font-size:20px;font-weight:700;color:var(--signal-5);text-shadow:0 0 12px rgba(251,191,36,.5)">🎉 恭喜中奖！</div>' +
+            '<div style="margin-top:6px;color:var(--signal);font-family:\'Share Tech Mono\',monospace">' + escapeHtml(nickname) + '</div>' +
+            '<div style="margin-top:8px;font-size:12px;color:rgba(234,246,255,.85)">请凭此页面与手环到现场领奖处兑奖 🎁</div>';
+        } catch (e) {
+          // Non-fatal: leave the registered-state view as-is.
+        }
       }
 
       // Show an inline error in the nickname form (Simplified Chinese, Req 10.7).
@@ -2346,9 +2496,6 @@
         var statusText = data.totalCheckins + '/10 站已完成';
         if (data.completed) {
           statusText = '🎉 全部完成！';
-          if (data.rewardCode) {
-            statusText += ' 奖励码: ' + data.rewardCode;
-          }
         }
         hint.textContent = statusText;
         hint.style.color = data.completed ? 'var(--signal-3)' : 'var(--signal)';
