@@ -308,6 +308,58 @@
       color: var(--danger);
     }
 
+    .ble-panel {
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--line);
+    }
+
+    .ble-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin-bottom: 0.75rem;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    .ble-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      min-width: 0;
+    }
+
+    .ble-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--muted);
+      flex: 0 0 auto;
+    }
+
+    .ble-dot.ok { background: var(--success); box-shadow: 0 0 10px rgba(52, 211, 153, 0.4); }
+    .ble-dot.warn { background: var(--signal-5); }
+    .ble-dot.error { background: var(--danger); }
+
+    .ble-controls {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0.6rem;
+    }
+
+    .ble-controls .btn { justify-content: center; padding-inline: 0.8rem; }
+
+    .ble-meta {
+      margin-top: 0.75rem;
+      font-size: 0.78rem;
+      color: var(--muted);
+      overflow-wrap: anywhere;
+    }
+
+    .ble-meta strong { color: var(--signal); font-weight: 600; }
+
     /* ===== LOADING ===== */
     .loading-indicator {
       display: flex;
@@ -354,6 +406,7 @@
       .topbar-right { width: 100%; justify-content: flex-end; }
       .main-content { padding: 1rem; }
       .checkin-form { flex-direction: column; }
+      .ble-controls { grid-template-columns: 1fr; }
     }
 
     ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -418,6 +471,21 @@
           </div>
         </div>
 
+        <!-- BLE NFC Reader Panel -->
+        <div class="panel">
+          <div class="panel-header">蓝牙 NFC 读卡器</div>
+          <div class="ble-header">
+            <span class="ble-status"><span id="ble-dot" class="ble-dot"></span><span id="ble-status-text">蓝牙读卡器未连接</span></span>
+            <span id="ble-mode-label">自动打卡</span>
+          </div>
+          <div class="ble-controls">
+            <button id="ble-connect-btn" class="btn btn-primary" onclick="connectBleReader()">连接读卡器</button>
+            <button id="ble-disconnect-btn" class="btn btn-ghost" onclick="disconnectBleReader()" disabled>断开</button>
+            <button id="ble-auto-btn" class="btn btn-ghost" onclick="toggleBleAutoCheckin()">自动: 开</button>
+          </div>
+          <div class="ble-meta" id="ble-latest">连接硬件后，扫描手环会自动写入 Tag ID 并打卡。</div>
+        </div>
+
         <!-- Manual Check-in Panel -->
         <div class="panel">
           <div class="panel-header">手动打卡 (Plan B)</div>
@@ -449,6 +517,15 @@
   let userPool = null;
   let stationId = null;
   let refreshInterval = null;
+
+  const BLE_SERVICE_UUID = '12340001-0000-1000-8000-00805f9b34fb';
+  const BLE_NFC_URL_CHAR_UUID = '12340004-0000-1000-8000-00805f9b34fb';
+  let bleDevice = null;
+  let bleNfcUrlChar = null;
+  let bleAutoCheckin = true;
+  let bleCheckinInFlight = false;
+  let lastBleTagId = '';
+  let lastBleTagAt = 0;
 
   // ===== INITIALIZATION =====
   function initCognito() {
@@ -544,6 +621,7 @@
 
   function handleLogout() {
     if (refreshInterval) clearInterval(refreshInterval);
+    disconnectBleReader(false);
     if (cognitoUser) cognitoUser.signOut();
     currentSession = { idToken: null, accessToken: null, refreshToken: null };
     cognitoUser = null;
@@ -631,8 +709,129 @@
     }
   }
 
+  // ===== BLE NFC READER =====
+  function updateBleStatus(message, state) {
+    const text = document.getElementById('ble-status-text');
+    const dot = document.getElementById('ble-dot');
+    if (text) text.textContent = message;
+    if (dot) dot.className = 'ble-dot' + (state ? ' ' + state : '');
+  }
+
+  function setBleControls(connected) {
+    const connectBtn = document.getElementById('ble-connect-btn');
+    const disconnectBtn = document.getElementById('ble-disconnect-btn');
+    if (connectBtn) connectBtn.disabled = connected;
+    if (disconnectBtn) disconnectBtn.disabled = !connected;
+  }
+
+  function setBleLatest(message) {
+    const el = document.getElementById('ble-latest');
+    if (el) el.innerHTML = message;
+  }
+
+  function extractTagIdFromBlePayload(payload) {
+    const text = (payload || '').trim();
+    if (!text) return '';
+    try {
+      const url = new URL(text);
+      return (url.searchParams.get('tagId') || '').trim();
+    } catch (e) {
+      const match = text.match(/[?&]tagId=([^&]+)/);
+      return match ? decodeURIComponent(match[1]).trim() : text;
+    }
+  }
+
+  async function connectBleReader() {
+    if (!navigator.bluetooth) {
+      updateBleStatus('当前浏览器不支持 Web Bluetooth', 'error');
+      showCheckinResult('error', '请使用 Android Chrome，并通过 HTTPS 打开展商控制台');
+      return;
+    }
+
+    try {
+      updateBleStatus('正在选择读卡器...', 'warn');
+      bleDevice = await navigator.bluetooth.requestDevice({
+        filters: [{ services: [BLE_SERVICE_UUID] }],
+        optionalServices: [BLE_SERVICE_UUID]
+      });
+      bleDevice.addEventListener('gattserverdisconnected', onBleDisconnected);
+
+      updateBleStatus('正在连接 ' + (bleDevice.name || 'NFC 读卡器') + '...', 'warn');
+      const server = await bleDevice.gatt.connect();
+      const service = await server.getPrimaryService(BLE_SERVICE_UUID);
+      bleNfcUrlChar = await service.getCharacteristic(BLE_NFC_URL_CHAR_UUID);
+      await bleNfcUrlChar.startNotifications();
+      bleNfcUrlChar.addEventListener('characteristicvaluechanged', handleBleNfcUrl);
+
+      setBleControls(true);
+      updateBleStatus('已连接 ' + (bleDevice.name || 'NFC 读卡器'), 'ok');
+      setBleLatest('已连接，等待硬件扫描手环。');
+    } catch (e) {
+      updateBleStatus('蓝牙连接失败', 'error');
+      setBleControls(false);
+      showCheckinResult('error', '蓝牙连接失败: ' + (e.message || e));
+    }
+  }
+
+  function onBleDisconnected() {
+    bleNfcUrlChar = null;
+    setBleControls(false);
+    updateBleStatus('蓝牙读卡器已断开', 'error');
+  }
+
+  function disconnectBleReader(showMessage = true) {
+    if (bleDevice && bleDevice.gatt && bleDevice.gatt.connected) {
+      bleDevice.gatt.disconnect();
+    }
+    bleNfcUrlChar = null;
+    setBleControls(false);
+    if (showMessage) updateBleStatus('蓝牙读卡器已断开', 'error');
+  }
+
+  function toggleBleAutoCheckin() {
+    bleAutoCheckin = !bleAutoCheckin;
+    const btn = document.getElementById('ble-auto-btn');
+    const label = document.getElementById('ble-mode-label');
+    if (btn) btn.textContent = bleAutoCheckin ? '自动: 开' : '自动: 关';
+    if (label) label.textContent = bleAutoCheckin ? '自动打卡' : '手动确认';
+    setBleLatest(bleAutoCheckin ? '收到 tagId 后会自动打卡。' : '收到 tagId 后只填入输入框，需要手动确认。');
+  }
+
+  async function handleBleNfcUrl(event) {
+    const payload = new TextDecoder().decode(event.target.value.buffer || event.target.value).replace(/\0+$/g, '').trim();
+    const tagId = extractTagIdFromBlePayload(payload);
+    if (!tagId) {
+      setBleLatest('收到空的蓝牙通知，已忽略。');
+      return;
+    }
+
+    const nowMs = Date.now();
+    if (tagId === lastBleTagId && nowMs - lastBleTagAt < 3000) {
+      setBleLatest('忽略重复 tagId: <strong>' + escapeHtml(tagId) + '</strong>');
+      return;
+    }
+    lastBleTagId = tagId;
+    lastBleTagAt = nowMs;
+
+    const tagInput = document.getElementById('checkin-tag-input');
+    if (tagInput) tagInput.value = tagId;
+    setBleLatest('收到 tagId: <strong>' + escapeHtml(tagId) + '</strong>');
+
+    if (bleAutoCheckin) {
+      if (bleCheckinInFlight) return;
+      bleCheckinInFlight = true;
+      try {
+        await doManualCheckin('ble');
+      } finally {
+        bleCheckinInFlight = false;
+      }
+    } else {
+      showCheckinResult('cooldown', '已读取 tagId，请确认打卡');
+    }
+  }
+
   // ===== MANUAL CHECK-IN =====
-  async function doManualCheckin() {
+  async function doManualCheckin(source = 'manual') {
     const tagInput = document.getElementById('checkin-tag-input');
     const resultEl = document.getElementById('checkin-result');
     const tagId = tagInput.value.trim();
@@ -661,7 +860,7 @@
       const data = await res.json();
 
       if (res.ok && !data.error) {
-        showCheckinResult('success', '✓ 打卡成功');
+        showCheckinResult('success', source === 'ble' ? '✓ 蓝牙打卡成功' : '✓ 打卡成功');
         // Refresh station data after successful checkin
         loadStationData();
       } else if (data.error === 'cooldown' || (data.message && data.message.includes('cooldown'))) {
