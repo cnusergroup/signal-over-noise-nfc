@@ -577,11 +577,13 @@
     document.getElementById('dashboard-view').style.display = 'block';
     document.getElementById('station-title').textContent = '站点 ' + stationId + ' — 展商控制台';
 
-    // Auto-fill tagId from URL param
+    // Auto-fill tagId from URL param — and auto-checkin immediately (no confirm needed)
     const params = new URLSearchParams(window.location.search);
     const tagFromUrl = params.get('tagId');
     if (tagFromUrl) {
       document.getElementById('checkin-tag-input').value = tagFromUrl;
+      // Auto-checkin without requiring the user to press the button
+      doManualCheckin();
     }
 
     // Load station data and start auto-refresh

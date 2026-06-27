@@ -1708,8 +1708,8 @@
           <div class="offer-label" style="color:var(--signal)">📅 活动时间表</div>
           <div class="offer-text"><a href="https://2026-summer.awscommunityday.cn/schedule/" target="_blank" rel="noopener" id="scheduleLink" style="color:var(--signal);text-decoration:underline">点击查看完整活动安排 →</a></div>
         </div>
-        <!-- Active Missions -->
-        <div id="infoActiveMissions" style="margin-top:14px">
+        <!-- Active Missions (hidden — no active missions currently) -->
+        <div id="infoActiveMissions" style="margin-top:14px;display:none">
           <div style="font-size:10px;font-family:'Share Tech Mono',monospace;letter-spacing:.14em;color:var(--signal-3);text-transform:uppercase;margin-bottom:8px">🎯 当前激活的任务</div>
           <div id="infoMissionsList" style="font-size:13px;color:rgba(234,246,255,.85);line-height:1.8">
             <span style="color:var(--muted)">加载中...</span>
@@ -1730,6 +1730,10 @@
         <div id="infoLotterySection" style="margin-top:14px;display:none">
           <div style="font-size:10px;font-family:'Share Tech Mono',monospace;letter-spacing:.14em;color:var(--signal-2);text-transform:uppercase;margin-bottom:8px">🎲 After Party 抽奖</div>
           <div id="infoLotteryContent" style="font-size:13px;color:rgba(234,246,255,.85);line-height:1.8"></div>
+        </div>
+        <!-- Enter map button -->
+        <div style="margin-top:20px;text-align:center">
+          <button id="enterMapBtn" style="padding:12px 32px;border-radius:10px;border:1px solid var(--signal);background:linear-gradient(135deg,rgba(125,249,255,.15),rgba(125,249,255,.05));color:var(--signal);font-family:'Share Tech Mono',monospace;font-size:14px;font-weight:600;cursor:pointer;letter-spacing:.05em;transition:all .2s" onmouseover="this.style.background='rgba(125,249,255,.2)';this.style.boxShadow='0 0 16px rgba(125,249,255,.3)'" onmouseout="this.style.background='linear-gradient(135deg,rgba(125,249,255,.15),rgba(125,249,255,.05))';this.style.boxShadow='none'">🗺️ 进入打卡地图</button>
         </div>
       </div>
     </div>
@@ -2185,6 +2189,7 @@
         if (r.type === 'early_bird') return '🐦 早鸟 #' + r.position;
         if (r.type === 'milestone') return '🎯 #' + r.visitorNumber + ' ' + (r.missionName || '');
         if (r.type === 'mission_winner') return '🎰 ' + (r.missionName || '中奖');
+        if (r.type === 'lottery_winner') return '🎉 After Party 抽奖中奖';
         return '🎁 奖励';
       }
 
@@ -2691,6 +2696,10 @@
         overlay.setAttribute('aria-hidden', 'true');
       }
 
+      // "进入打卡地图" button in the info popup
+      var enterMapBtn = document.getElementById('enterMapBtn');
+      if (enterMapBtn) enterMapBtn.addEventListener('click', closeInfoPopup);
+
       async function loadActiveMissionsForPopup() {
         var listEl = document.getElementById('infoMissionsList');
         try {
@@ -2741,6 +2750,8 @@
           text = '🎯 第 ' + r.visitorNumber + ' 位幸运访客！活动「' + (r.missionName || '') + '」' + (stationInfo ? '请到<strong style="color:var(--signal)">' + stationInfo + '</strong>领奖' : '') + prizeInfo;
         } else if (r.type === 'mission_winner') {
           text = '🎰 中奖！「' + (r.missionName || '') + '」' + (r.prizeDescription ? '奖品: ' + r.prizeDescription : '');
+        } else if (r.type === 'lottery_winner') {
+          text = '🎉 After Party 抽奖中奖！请到现场领奖处凭手环兑奖';
         }
 
         return '<div style="' + style + '">' + text + badge + '</div>';

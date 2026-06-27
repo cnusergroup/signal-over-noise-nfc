@@ -199,6 +199,39 @@ export async function handleRewards(tagId) {
       }
     }
 
+    // 4. Check lottery winner status (After Party draw)
+    try {
+      const nicknameResult = await client.send(new GetCommand({
+        TableName: tableName,
+        Key: { PK: `TAG#${tagId}`, SK: 'NICKNAME' },
+      }));
+      if (nicknameResult.Item && nicknameResult.Item.nickname) {
+        const nickname = nicknameResult.Item.nickname;
+        // Scan winner records to check if this nickname won
+        const winResult = await client.send(new QueryCommand({
+          TableName: tableName,
+          ...buildKeyCondition('LOTTERY', { beginsWith: 'WINNER#' }),
+        }));
+        const won = (winResult.Items || []).find(w => w.nickname === nickname || w.tagId === tagId);
+        if (won) {
+          const rewardKey = `lottery_winner:${won.drawSeq || 'unknown'}`;
+          const redemption = await checkRedemptionStatus(tagId, rewardKey, client, tableName);
+          rewards.push({
+            type: 'lottery_winner',
+            name: 'After Party 抽奖中奖 🎉',
+            nickname,
+            drawSeq: won.drawSeq,
+            drawnAt: won.drawnAt,
+            rewardKey,
+            ...redemption,
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Error checking lottery winner status:', err);
+      // Non-fatal: skip lottery check
+    }
+
     return ok({ tagId, rewards, totalRewards: rewards.length });
   } catch (err) {
     console.error('Error querying rewards:', err);
